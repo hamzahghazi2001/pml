@@ -52,7 +52,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Keller brand colors
         "keller-navy": "#1e3a8a",
         "keller-yellow": "#fbbf24",
       },
