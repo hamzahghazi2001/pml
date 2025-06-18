@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { FileText, Eye, Download, CheckCircle, AlertCircle, FileImage } from "lucide-react"
+import { FileText, Eye, Download, CheckCircle, AlertCircle, FileImage, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface DocumentRequirement {
   id: string
@@ -45,12 +46,60 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
   const [uploading, setUploading] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [previewDocument, setPreviewDocument] = useState<ProjectDocument | null>(null)
+  const [storageStatus, setStorageStatus] = useState<"checking" | "ready" | "error">("checking")
+  const [storageError, setStorageError] = useState<string | null>(null)
 
   const supabase = createClient()
+
+  const checkStorageSetup = async () => {
+    try {
+      setStorageStatus("checking")
+      setStorageError(null)
+
+      // Check if bucket exists
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets()
+
+      if (bucketError) {
+        console.error("Storage check error:", bucketError)
+        setStorageError(`Storage access error: ${bucketError.message}`)
+        setStorageStatus("error")
+        return false
+      }
+
+      const bucketExists = buckets?.some((bucket) => bucket.id === "project-documents")
+
+      if (!bucketExists) {
+        setStorageError(
+          "Storage bucket 'project-documents' not found. Please contact administrator to run storage setup.",
+        )
+        setStorageStatus("error")
+        return false
+      }
+
+      // Test upload permissions by checking if we can list files
+      const { error: listError } = await supabase.storage.from("project-documents").list("", { limit: 1 })
+
+      if (listError) {
+        console.error("Storage permission error:", listError)
+        setStorageError(`Storage permission error: ${listError.message}`)
+        setStorageStatus("error")
+        return false
+      }
+
+      setStorageStatus("ready")
+      return true
+    } catch (error) {
+      console.error("Storage setup check failed:", error)
+      setStorageError("Failed to check storage setup")
+      setStorageStatus("error")
+      return false
+    }
+  }
 
   useEffect(() => {
     fetchRequirements()
     fetchDocuments()
+    checkStorageSetup()
   }, [projectId, currentGate])
 
   const fetchRequirements = async () => {
@@ -88,6 +137,12 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
   const handleFileUpload = async (file: File, requirementId: string) => {
     if (!file) return
 
+    // Check storage status before upload
+    if (storageStatus !== "ready") {
+      alert("Storage is not ready. Please wait or contact administrator.")
+      return
+    }
+
     setUploading(requirementId)
     setUploadProgress(0)
 
@@ -96,6 +151,31 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
+
+      // Validate file size (50MB limit)
+      if (file.size > 52428800) {
+        throw new Error("File size exceeds 50MB limit")
+      }
+
+      // Validate file type
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "text/plain",
+        "text/csv",
+      ]
+
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error(`File type ${file.type} is not allowed`)
+      }
 
       // Upload file to Supabase Storage
       const fileExt = file.name.split(".").pop()
@@ -109,7 +189,10 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
           },
         })
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error("Upload error:", uploadError)
+        throw new Error(`Upload failed: ${uploadError.message}`)
+      }
 
       // Get public URL
       const { data: urlData } = supabase.storage.from("project-documents").getPublicUrl(fileName)
@@ -133,13 +216,17 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
         uploaded_by: user.id,
       })
 
-      if (dbError) throw dbError
+      if (dbError) {
+        console.error("Database error:", dbError)
+        throw new Error(`Database error: ${dbError.message}`)
+      }
 
       await fetchDocuments()
       onDocumentChange?.()
     } catch (error) {
       console.error("Error uploading file:", error)
-      alert("Error uploading file. Please try again.")
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      alert(`Error uploading file: ${errorMessage}`)
     } finally {
       setUploading(null)
       setUploadProgress(0)
@@ -157,10 +244,6 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
   const canAdvanceGate = () => {
     const requiredDocs = requirements.filter((req) => req.is_required)
     return requiredDocs.every((req) => isRequirementFulfilled(req))
-  }
-
-  const handlePreview = (document: ProjectDocument) => {
-    setPreviewDocument(document)
   }
 
   const renderPreview = (document: ProjectDocument) => {
@@ -186,6 +269,7 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
             src={document.file_preview_url || "/placeholder.svg"}
             alt={document.file_name}
             className="w-full h-auto rounded-lg"
+            crossOrigin="anonymous"
           />
         </div>
       )
@@ -226,6 +310,27 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
 
   return (
     <div className="space-y-6">
+      {/* Storage Status Alert */}
+      {storageStatus === "error" && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{storageError}</span>
+            <Button variant="outline" size="sm" onClick={checkStorageSetup}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {storageStatus === "checking" && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Checking storage setup...</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -307,7 +412,8 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
                       </div>
                     </div>
                   ) : (
-                    canUpload && (
+                    canUpload &&
+                    storageStatus === "ready" && (
                       <div className="mt-3">
                         <Label htmlFor={`file-${requirement.id}`} className="sr-only">
                           Upload {requirement.document_type}
@@ -324,7 +430,7 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
                             }}
                             disabled={uploading === requirement.id}
                             className="flex-1"
-                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.xls,.xlsx"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.xls,.xlsx,.csv,.txt"
                           />
                           {uploading === requirement.id && (
                             <div className="flex items-center gap-2 min-w-[120px]">
@@ -333,6 +439,9 @@ export function DocumentUpload({ projectId, currentGate, canUpload, onDocumentCh
                             </div>
                           )}
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Supported formats: PDF, Word, Excel, Images, Text files (Max: 50MB)
+                        </p>
                       </div>
                     )
                   )}
