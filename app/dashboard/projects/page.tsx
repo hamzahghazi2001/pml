@@ -823,7 +823,11 @@ export default function ProjectsPage() {
                           </Button>
                         )}
 
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/projects/${project.id}`)}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </Button>
