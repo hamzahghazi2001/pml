@@ -2,10 +2,11 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase"
 import { toast } from "sonner"
 import { Bell, CheckCircle, XCircle, Clock } from "lucide-react"
+import type { RealtimeChannel } from "@supabase/supabase-js"
 
 interface Notification {
   id: string
@@ -39,6 +40,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [currentUser, setCurrentUser] = useState<any>(null)
   const supabase = createClient()
+  // keep a single channel instance
+  const channelRef = useRef<RealtimeChannel | null>(null)
 
   useEffect(() => {
     fetchCurrentUser()
@@ -47,7 +50,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (currentUser) {
       fetchNotifications()
-      setupRealtimeSubscription()
+      const cleanup = setupRealtimeSubscription()
+      return cleanup
     }
   }, [currentUser])
 
@@ -85,6 +89,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const setupRealtimeSubscription = () => {
     if (!currentUser) return
+    // already subscribed → no-op
+    if (channelRef.current) return
 
     const channel = supabase
       .channel("notifications")
@@ -120,9 +126,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         },
       )
       .subscribe()
+    channelRef.current = channel
 
+    // return cleanup FN
     return () => {
-      supabase.removeChannel(channel)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
     }
   }
 

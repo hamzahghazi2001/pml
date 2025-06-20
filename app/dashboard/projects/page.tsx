@@ -106,9 +106,6 @@ export default function ProjectsPage() {
   useEffect(() => {
     fetchProjects()
     fetchUsers()
-  }, [])
-
-  useEffect(() => {
     fetchCurrentUser()
   }, [])
 
@@ -178,33 +175,56 @@ export default function ProjectsPage() {
     if (!projectIds.length) return
 
     try {
-      const { data, error } = await supabase
-        .from("project_approvals")
-        .select(`
-          id, 
-          project_id, 
-          gate_number, 
-          status, 
-          required_role,
-          approver:users!project_approvals_approved_by_fkey(full_name)
-        `)
+      // First get all gates for these projects
+      const { data: gatesData, error: gatesError } = await supabase
+        .from("gates")
+        .select("id, project_id, gate_number")
         .in("project_id", projectIds)
-        .order("gate_number", { ascending: true })
 
-      if (error) throw error
+      if (gatesError) throw gatesError
+
+      if (!gatesData || gatesData.length === 0) {
+        setProjectApprovals({})
+        return
+      }
+
+      const gateIds = gatesData.map((gate) => gate.id)
+
+      // Then get approvals for all these gates
+      const { data: approvalsData, error: approvalsError } = await supabase
+        .from("approvals")
+        .select(`
+        id, 
+        gate_id, 
+        required_role,
+        status,
+        approver:users!approvals_approver_id_fkey(full_name)
+      `)
+        .in("gate_id", gateIds)
+        .order("created_at", { ascending: true })
+
+      if (approvalsError) throw approvalsError
 
       // Group approvals by project_id
-      const approvalsByProject = (data || []).reduce((acc: Record<string, any[]>, approval) => {
-        if (!acc[approval.project_id]) {
-          acc[approval.project_id] = []
+      const approvalsByProject = (approvalsData || []).reduce((acc: Record<string, any[]>, approval) => {
+        // Find the gate for this approval
+        const gate = gatesData.find((g) => g.id === approval.gate_id)
+        if (gate) {
+          if (!acc[gate.project_id]) {
+            acc[gate.project_id] = []
+          }
+          acc[gate.project_id].push({
+            ...approval,
+            gate_number: gate.gate_number,
+          })
         }
-        acc[approval.project_id].push(approval)
         return acc
       }, {})
 
       setProjectApprovals(approvalsByProject)
     } catch (error) {
       console.error("Error fetching project approvals:", error)
+      setProjectApprovals({})
     }
   }
 
@@ -411,11 +431,19 @@ export default function ProjectsPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  const handleNewProjectClick = () => {
+    console.log("New Project button clicked")
+    setIsDialogOpen(true)
+  }
+
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading projects...</div>
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="container mx-auto p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-lg">Loading projects...</div>
+          </div>
         </div>
       </div>
     )
@@ -430,9 +458,11 @@ export default function ProjectsPage() {
             <h1 className="text-3xl font-bold">Projects</h1>
             <p className="text-gray-600 mt-2">Manage your project lifecycle and approvals</p>
           </div>
+
+          {/* New Project Button and Dialog */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={handleNewProjectClick} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="mr-2 h-4 w-4" />
                 New Project
               </Button>
@@ -448,21 +478,23 @@ export default function ProjectsPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="name">Project Name</Label>
+                    <Label htmlFor="name">Project Name *</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => handleInputChange("name", e.target.value)}
                       required
+                      placeholder="Enter project name"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="client_name">Client Name</Label>
+                    <Label htmlFor="client_name">Client Name *</Label>
                     <Input
                       id="client_name"
                       value={formData.client_name}
                       onChange={(e) => handleInputChange("client_name", e.target.value)}
                       required
+                      placeholder="Enter client name"
                     />
                   </div>
                 </div>
@@ -474,12 +506,13 @@ export default function ProjectsPage() {
                     value={formData.description}
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     rows={3}
+                    placeholder="Enter project description"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="revenue">Revenue (USD)</Label>
+                    <Label htmlFor="revenue">Revenue (USD) *</Label>
                     <Input
                       id="revenue"
                       type="number"
@@ -487,10 +520,11 @@ export default function ProjectsPage() {
                       value={formData.revenue}
                       onChange={(e) => handleInputChange("revenue", e.target.value)}
                       required
+                      placeholder="0.00"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="risk_factor">Risk Factor (1-10)</Label>
+                    <Label htmlFor="risk_factor">Risk Factor (1-10) *</Label>
                     <Input
                       id="risk_factor"
                       type="number"
@@ -499,6 +533,7 @@ export default function ProjectsPage() {
                       value={formData.risk_factor}
                       onChange={(e) => handleInputChange("risk_factor", e.target.value)}
                       required
+                      placeholder="1-10"
                     />
                   </div>
                 </div>
@@ -517,27 +552,29 @@ export default function ProjectsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="country">Country</Label>
+                    <Label htmlFor="country">Country *</Label>
                     <Input
                       id="country"
                       value={formData.country}
                       onChange={(e) => handleInputChange("country", e.target.value)}
                       required
+                      placeholder="Enter country"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="technique">Technique</Label>
+                    <Label htmlFor="technique">Technique *</Label>
                     <Input
                       id="technique"
                       value={formData.technique}
                       onChange={(e) => handleInputChange("technique", e.target.value)}
                       required
+                      placeholder="Enter technique"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="next_review_date">Next Review Date</Label>
+                  <Label htmlFor="next_review_date">Next Review Date *</Label>
                   <Input
                     id="next_review_date"
                     type="date"
@@ -589,7 +626,12 @@ export default function ProjectsPage() {
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isSubmitting}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={isSubmitting}>
@@ -606,7 +648,7 @@ export default function ProjectsPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <div className="text-gray-500 mb-4">No projects found</div>
-                <Button onClick={() => setIsDialogOpen(true)}>
+                <Button onClick={handleNewProjectClick} className="bg-blue-600 hover:bg-blue-700">
                   <Plus className="mr-2 h-4 w-4" />
                   Create your first project
                 </Button>
@@ -759,41 +801,6 @@ export default function ProjectsPage() {
                           <Calendar className="h-4 w-4 text-gray-500" />
                           <span>Review: {new Date(project.next_review_date).toLocaleDateString()}</span>
                         </div>
-                      </div>
-
-                      {/* Approval Status Section */}
-                      <div className="mt-4 pt-4 border-t">
-                        <h4 className="font-medium mb-2">Approval Status</h4>
-                        {projectApprovals[project.id] && projectApprovals[project.id].length > 0 ? (
-                          <div className="space-y-2">
-                            {projectApprovals[project.id].map((approval) => (
-                              <div
-                                key={approval.id}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">Gate {approval.gate_number}:</span>
-                                  <span>
-                                    {approval.required_role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                                  </span>
-                                </div>
-                                <Badge
-                                  variant={
-                                    approval.status === "approved"
-                                      ? "success"
-                                      : approval.status === "rejected"
-                                        ? "destructive"
-                                        : "outline"
-                                  }
-                                >
-                                  {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-gray-500 text-sm">No approval data available</div>
-                        )}
                       </div>
 
                       <div className="mt-4 pt-4 border-t flex gap-2">
