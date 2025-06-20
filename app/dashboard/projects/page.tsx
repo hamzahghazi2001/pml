@@ -175,33 +175,56 @@ export default function ProjectsPage() {
     if (!projectIds.length) return
 
     try {
-      const { data, error } = await supabase
-        .from("project_approvals")
-        .select(`
-          id, 
-          project_id, 
-          gate_number, 
-          status, 
-          required_role,
-          approver:users!project_approvals_approved_by_fkey(full_name)
-        `)
+      // First get all gates for these projects
+      const { data: gatesData, error: gatesError } = await supabase
+        .from("gates")
+        .select("id, project_id, gate_number")
         .in("project_id", projectIds)
-        .order("gate_number", { ascending: true })
 
-      if (error) throw error
+      if (gatesError) throw gatesError
+
+      if (!gatesData || gatesData.length === 0) {
+        setProjectApprovals({})
+        return
+      }
+
+      const gateIds = gatesData.map((gate) => gate.id)
+
+      // Then get approvals for all these gates
+      const { data: approvalsData, error: approvalsError } = await supabase
+        .from("approvals")
+        .select(`
+        id, 
+        gate_id, 
+        required_role,
+        status,
+        approver:users!approvals_approver_id_fkey(full_name)
+      `)
+        .in("gate_id", gateIds)
+        .order("created_at", { ascending: true })
+
+      if (approvalsError) throw approvalsError
 
       // Group approvals by project_id
-      const approvalsByProject = (data || []).reduce((acc: Record<string, any[]>, approval) => {
-        if (!acc[approval.project_id]) {
-          acc[approval.project_id] = []
+      const approvalsByProject = (approvalsData || []).reduce((acc: Record<string, any[]>, approval) => {
+        // Find the gate for this approval
+        const gate = gatesData.find((g) => g.id === approval.gate_id)
+        if (gate) {
+          if (!acc[gate.project_id]) {
+            acc[gate.project_id] = []
+          }
+          acc[gate.project_id].push({
+            ...approval,
+            gate_number: gate.gate_number,
+          })
         }
-        acc[approval.project_id].push(approval)
         return acc
       }, {})
 
       setProjectApprovals(approvalsByProject)
     } catch (error) {
       console.error("Error fetching project approvals:", error)
+      setProjectApprovals({})
     }
   }
 
@@ -778,41 +801,6 @@ export default function ProjectsPage() {
                           <Calendar className="h-4 w-4 text-gray-500" />
                           <span>Review: {new Date(project.next_review_date).toLocaleDateString()}</span>
                         </div>
-                      </div>
-
-                      {/* Approval Status Section */}
-                      <div className="mt-4 pt-4 border-t">
-                        <h4 className="font-medium mb-2">Approval Status</h4>
-                        {projectApprovals[project.id] && projectApprovals[project.id].length > 0 ? (
-                          <div className="space-y-2">
-                            {projectApprovals[project.id].map((approval) => (
-                              <div
-                                key={approval.id}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">Gate {approval.gate_number}:</span>
-                                  <span>
-                                    {approval.required_role.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                                  </span>
-                                </div>
-                                <Badge
-                                  variant={
-                                    approval.status === "approved"
-                                      ? "default"
-                                      : approval.status === "rejected"
-                                        ? "destructive"
-                                        : "outline"
-                                  }
-                                >
-                                  {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-gray-500 text-sm">No approval data available</div>
-                        )}
                       </div>
 
                       <div className="mt-4 pt-4 border-t flex gap-2">

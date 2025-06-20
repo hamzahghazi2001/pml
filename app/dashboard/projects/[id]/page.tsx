@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase"
 import { Navbar } from "@/components/navbar"
 import { DocumentUpload } from "@/components/document-upload"
 import { ApprovalDashboard } from "@/components/approval-dashboard"
+import { ProjectApprovalStatus } from "@/components/project-approval-status"
 
 interface Project {
   id: string
@@ -112,16 +113,55 @@ export default function ProjectDetailsPage() {
 
   const checkGateAdvancement = async (currentGate: number) => {
     try {
-      const { data, error } = await supabase.rpc("can_advance_gate", {
-        project_id_param: projectId,
-        current_gate_param: currentGate,
-      })
+      // Check document requirements first
+      const { data: documentRequirements, error: docReqError } = await supabase
+        .from("document_requirements")
+        .select("id, is_required")
+        .eq("gate_number", currentGate)
 
-      if (error) throw error
-      setCanAdvanceGate(data || false)
+      if (docReqError) throw docReqError
+
+      // Check if all required documents are uploaded
+      let allDocumentsComplete = true
+      if (documentRequirements && documentRequirements.length > 0) {
+        const requiredDocIds = documentRequirements.filter((req) => req.is_required).map((req) => req.id)
+
+        if (requiredDocIds.length > 0) {
+          const { data: uploadedDocs, error: docsError } = await supabase
+            .from("documents")
+            .select("requirement_id")
+            .eq("project_id", projectId)
+            .in("requirement_id", requiredDocIds)
+            .eq("upload_status", "completed")
+
+          if (docsError) throw docsError
+
+          allDocumentsComplete = uploadedDocs?.length === requiredDocIds.length
+        }
+      }
+
+      // Check approval requirements
+      const { data: approvals, error: approvalsError } = await supabase
+        .from("project_approvals")
+        .select("status")
+        .eq("project_id", projectId)
+        .eq("gate_number", currentGate)
+
+      if (approvalsError) throw approvalsError
+
+      // Check if all approvals are completed
+      const allApprovalsComplete =
+        approvals && approvals.length > 0 ? approvals.every((approval) => approval.status === "approved") : false
+
+      // Gate can only be advanced if both documents and approvals are complete
+      const canAdvance = allDocumentsComplete && allApprovalsComplete
+      setCanAdvanceGate(canAdvance)
+
+      return canAdvance
     } catch (error) {
       console.error("Error checking gate advancement:", error)
       setCanAdvanceGate(false)
+      return false
     }
   }
 
@@ -136,7 +176,8 @@ export default function ProjectDetailsPage() {
         return
       }
 
-      const { error } = await supabase
+      // Update the project gate
+      const { error: updateError } = await supabase
         .from("projects")
         .update({
           current_gate: nextGate,
@@ -144,15 +185,98 @@ export default function ProjectDetailsPage() {
         })
         .eq("id", projectId)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Create new approval records for the next gate
+      await createApprovalsForGate(projectId, nextGate, project.category)
 
       await fetchProject()
-      alert(`Project advanced to Gate ${nextGate}!`)
+      alert(`Project advanced to Gate ${nextGate}! New approval workflow has been initiated.`)
     } catch (error) {
       console.error("Error advancing gate:", error)
       alert("Error advancing gate. Please try again.")
     } finally {
       setAdvancingGate(false)
+    }
+  }
+
+  const createApprovalsForGate = async (projectId: string, gateNumber: number, category: string) => {
+    try {
+      // Define approval requirements based on gate and category
+      const approvalMatrix: Record<string, Record<number, string[]>> = {
+        category_1a: {
+          1: ["bid_manager", "branch_manager", "bu_director"],
+          2: ["bid_manager", "branch_manager", "sales_director", "bu_director", "amea_president"],
+          3: ["bid_manager", "branch_manager", "sales_director", "technical_director", "bu_director"],
+          4: ["branch_manager", "finance_manager", "bu_director", "amea_president", "ceo"],
+          5: ["project_manager", "branch_manager", "technical_director", "bu_director"],
+          6: ["project_manager", "branch_manager", "finance_manager", "bu_director"],
+          7: ["project_manager", "branch_manager", "bu_director"],
+        },
+        category_1b: {
+          1: ["bid_manager", "branch_manager"],
+          2: ["bid_manager", "branch_manager", "sales_director", "bu_director"],
+          3: ["bid_manager", "branch_manager", "sales_director", "bu_director"],
+          4: ["branch_manager", "finance_manager", "bu_director", "amea_president"],
+          5: ["project_manager", "branch_manager", "bu_director"],
+          6: ["project_manager", "branch_manager", "bu_director"],
+          7: ["project_manager", "branch_manager"],
+        },
+        category_1c: {
+          1: ["bid_manager", "branch_manager"],
+          2: ["bid_manager", "branch_manager", "bu_director"],
+          3: ["bid_manager", "branch_manager", "bu_director"],
+          4: ["branch_manager", "finance_manager", "bu_director"],
+          5: ["project_manager", "branch_manager"],
+          6: ["project_manager", "branch_manager"],
+          7: ["project_manager"],
+        },
+        category_2: {
+          1: ["bid_manager"],
+          2: ["bid_manager", "branch_manager"],
+          3: ["bid_manager", "branch_manager"],
+          4: ["branch_manager", "finance_manager"],
+          5: ["project_manager", "branch_manager"],
+          6: ["project_manager"],
+          7: ["project_manager"],
+        },
+        category_3: {
+          1: ["bid_manager"],
+          2: ["bid_manager"],
+          3: ["bid_manager"],
+          4: ["branch_manager"],
+          5: ["project_manager"],
+          6: ["project_manager"],
+          7: ["project_manager"],
+        },
+      }
+
+      const requiredRoles = approvalMatrix[category]?.[gateNumber] || []
+
+      if (requiredRoles.length === 0) {
+        console.log(`No approvals required for gate ${gateNumber} category ${category}`)
+        return
+      }
+
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 7) // 7 days from now
+
+      const approvalRecords = requiredRoles.map((role) => ({
+        project_id: projectId,
+        gate_number: gateNumber,
+        required_role: role,
+        status: "pending",
+        due_date: dueDate.toISOString().split("T")[0], // Format as date
+        created_at: new Date().toISOString(),
+      }))
+
+      const { error } = await supabase.from("project_approvals").insert(approvalRecords)
+
+      if (error) throw error
+
+      console.log(`Created ${approvalRecords.length} approval records for gate ${gateNumber}`)
+    } catch (error) {
+      console.error("Error creating approvals for gate:", error)
     }
   }
 
@@ -322,12 +446,23 @@ export default function ProjectDetailsPage() {
               projectId={projectId}
               currentGate={project.current_gate}
               canUpload={canUserUpload()}
+              projectCategory={project.category}
+              currentUserRole={currentUser?.role}
               onDocumentChange={() => checkGateAdvancement(project.current_gate)}
             />
           </TabsContent>
 
           <TabsContent value="approvals">
-            <ApprovalDashboard userRole={currentUser?.role} />
+            <div className="space-y-6">
+              <ProjectApprovalStatus
+                projectId={projectId}
+                currentGate={project.current_gate}
+                projectCategory={project.category}
+                currentUserId={currentUser?.id}
+                currentUserRole={currentUser?.role}
+              />
+              <ApprovalDashboard userRole={currentUser?.role} />
+            </div>
           </TabsContent>
 
           <TabsContent value="timeline">
