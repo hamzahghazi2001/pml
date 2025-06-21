@@ -524,209 +524,228 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Projects</h1>
-            <p className="text-gray-600 mt-2">Manage your project lifecycle and approvals</p>
-          </div>
+      <div className="container mx-auto p-8 space-y-8">
+        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 rounded-xl shadow-lg p-8 text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
+          <div className="relative z-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-yellow-400 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-900 font-bold text-xl">K</span>
+                  </div>
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
+                      Projects
+                    </h1>
+                    <p className="text-blue-200 text-lg mt-1">Manage your project lifecycle and approvals</p>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/projects/completed")}
-              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-            >
-              <Trophy className="mr-2 h-4 w-4" />
-              View Completed
-            </Button>
-
-            {/* New Project Button and Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleNewProjectClick} className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/dashboard/projects/completed")}
+                  className="bg-green-50/20 border-green-200/30 text-green-200 hover:bg-green-100/20 backdrop-blur-sm"
+                >
+                  <Trophy className="mr-2 h-4 w-4" />
+                  View Completed
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Project</DialogTitle>
-                  <DialogDescription>
-                    Add a new project to the PLM system. The project category will be automatically calculated based on
-                    revenue and risk factor.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Project Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange("name", e.target.value)}
-                        required
-                        placeholder="Enter project name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="client_name">Client Name *</Label>
-                      <Input
-                        id="client_name"
-                        value={formData.client_name}
-                        onChange={(e) => handleInputChange("client_name", e.target.value)}
-                        required
-                        placeholder="Enter client name"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => handleInputChange("description", e.target.value)}
-                      rows={3}
-                      placeholder="Enter project description"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="revenue">Revenue (USD) *</Label>
-                      <Input
-                        id="revenue"
-                        type="number"
-                        step="0.01"
-                        value={formData.revenue}
-                        onChange={(e) => handleInputChange("revenue", e.target.value)}
-                        required
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="risk_factor">Risk Factor (1-10) *</Label>
-                      <Input
-                        id="risk_factor"
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={formData.risk_factor}
-                        onChange={(e) => handleInputChange("risk_factor", e.target.value)}
-                        required
-                        placeholder="1-10"
-                      />
-                    </div>
-                  </div>
-
-                  {calculatedCategory && (
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800">Calculated Category:</span>
-                        <Badge className={categoryColors[calculatedCategory as keyof typeof categoryColors]}>
-                          {categoryLabels[calculatedCategory as keyof typeof categoryLabels]}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="country">Country *</Label>
-                      <Input
-                        id="country"
-                        value={formData.country}
-                        onChange={(e) => handleInputChange("country", e.target.value)}
-                        required
-                        placeholder="Enter country"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="technique">Technique *</Label>
-                      <Input
-                        id="technique"
-                        value={formData.technique}
-                        onChange={(e) => handleInputChange("technique", e.target.value)}
-                        required
-                        placeholder="Enter technique"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="next_review_date">Next Review Date *</Label>
-                    <Input
-                      id="next_review_date"
-                      type="date"
-                      value={formData.next_review_date}
-                      onChange={(e) => handleInputChange("next_review_date", e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="bid_manager_id">Bid Manager</Label>
-                      <Select
-                        value={formData.bid_manager_id}
-                        onValueChange={(value) => handleInputChange("bid_manager_id", value === "clear" ? "" : value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select bid manager (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="clear">Clear selection</SelectItem>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.full_name} ({user.role})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="project_manager_id">Project Manager</Label>
-                      <Select
-                        value={formData.project_manager_id}
-                        onValueChange={(value) =>
-                          handleInputChange("project_manager_id", value === "clear" ? "" : value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select project manager (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="clear">Clear selection</SelectItem>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.full_name} ({user.role})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2 pt-4">
+                {/* New Project Button and Dialog */}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
                     <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsDialogOpen(false)}
-                      disabled={isSubmitting}
+                      onClick={handleNewProjectClick}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-semibold shadow-lg"
                     >
-                      Cancel
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Project
                     </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Creating..." : "Create Project"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Create New Project</DialogTitle>
+                      <DialogDescription>
+                        Add a new project to the PLM system. The project category will be automatically calculated based
+                        on revenue and risk factor.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="name">Project Name *</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => handleInputChange("name", e.target.value)}
+                            required
+                            placeholder="Enter project name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="client_name">Client Name *</Label>
+                          <Input
+                            id="client_name"
+                            value={formData.client_name}
+                            onChange={(e) => handleInputChange("client_name", e.target.value)}
+                            required
+                            placeholder="Enter client name"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={formData.description}
+                          onChange={(e) => handleInputChange("description", e.target.value)}
+                          rows={3}
+                          placeholder="Enter project description"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="revenue">Revenue (USD) *</Label>
+                          <Input
+                            id="revenue"
+                            type="number"
+                            step="0.01"
+                            value={formData.revenue}
+                            onChange={(e) => handleInputChange("revenue", e.target.value)}
+                            required
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="risk_factor">Risk Factor (1-10) *</Label>
+                          <Input
+                            id="risk_factor"
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={formData.risk_factor}
+                            onChange={(e) => handleInputChange("risk_factor", e.target.value)}
+                            required
+                            placeholder="1-10"
+                          />
+                        </div>
+                      </div>
+
+                      {calculatedCategory && (
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800">Calculated Category:</span>
+                            <Badge className={categoryColors[calculatedCategory as keyof typeof categoryColors]}>
+                              {categoryLabels[calculatedCategory as keyof typeof categoryLabels]}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="country">Country *</Label>
+                          <Input
+                            id="country"
+                            value={formData.country}
+                            onChange={(e) => handleInputChange("country", e.target.value)}
+                            required
+                            placeholder="Enter country"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="technique">Technique *</Label>
+                          <Input
+                            id="technique"
+                            value={formData.technique}
+                            onChange={(e) => handleInputChange("technique", e.target.value)}
+                            required
+                            placeholder="Enter technique"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="next_review_date">Next Review Date *</Label>
+                        <Input
+                          id="next_review_date"
+                          type="date"
+                          value={formData.next_review_date}
+                          onChange={(e) => handleInputChange("next_review_date", e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="bid_manager_id">Bid Manager</Label>
+                          <Select
+                            value={formData.bid_manager_id}
+                            onValueChange={(value) =>
+                              handleInputChange("bid_manager_id", value === "clear" ? "" : value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select bid manager (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="clear">Clear selection</SelectItem>
+                              {users.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.full_name} ({user.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="project_manager_id">Project Manager</Label>
+                          <Select
+                            value={formData.project_manager_id}
+                            onValueChange={(value) =>
+                              handleInputChange("project_manager_id", value === "clear" ? "" : value)
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select project manager (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="clear">Clear selection</SelectItem>
+                              {users.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.full_name} ({user.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsDialogOpen(false)}
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting ? "Creating..." : "Create Project"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
           </div>
         </div>
 

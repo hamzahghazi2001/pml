@@ -76,17 +76,40 @@ export default function CompletedProjectsPage() {
 
   const fetchCompletedProjects = async () => {
     try {
+      // First, let's check if there are any projects at all and their gate status
+      const { data: allProjects, error: allError } = await supabase.from("projects").select("id, name, current_gate")
+
+      if (allError) {
+        console.error("Error fetching all projects:", allError)
+      } else {
+        console.log("All projects and their gates:", allProjects)
+        const gateDistribution = allProjects?.reduce(
+          (acc, project) => {
+            acc[project.current_gate] = (acc[project.current_gate] || 0) + 1
+            return acc
+          },
+          {} as Record<number, number>,
+        )
+        console.log("Gate distribution:", gateDistribution)
+      }
+
+      // Now fetch completed projects (Gate 7)
       const { data, error } = await supabase
         .from("projects")
         .select(`
-          *,
-          bid_manager:users!projects_bid_manager_id_fkey(full_name),
-          project_manager:users!projects_project_manager_id_fkey(full_name)
-        `)
+        *,
+        bid_manager:users!projects_bid_manager_id_fkey(full_name),
+        project_manager:users!projects_project_manager_id_fkey(full_name)
+      `)
         .eq("current_gate", 7)
         .order("updated_at", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error("Error fetching completed projects:", error)
+        throw error
+      }
+
+      console.log("Completed projects found:", data?.length || 0)
 
       const completedProjects = data || []
       setProjects(completedProjects)
@@ -142,7 +165,7 @@ export default function CompletedProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
       <div className="container mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">

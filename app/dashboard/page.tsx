@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { DollarSign, CheckCircle, Clock, FileText, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 interface DashboardMetrics {
   totalProjects: number
@@ -31,6 +32,8 @@ interface DashboardMetrics {
     approvalAuthorityCompliance: number
     noticePeriodCompliance: number
     designReviewCompliance: number
+    noticePeriodCompliance: number
+    designReviewCompliance: number
   }
   userActivity: Array<any>
   teamPerformance: Array<any>
@@ -49,6 +52,7 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   const supabase = createClient()
 
@@ -339,22 +343,44 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="max-w-7xl mx-auto p-8 space-y-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-blue-900">PLM Dashboard</h1>
-              <p className="text-gray-600 mt-2">
-                Welcome back, {user.full_name} - {formatRole(user.role)}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Last updated</div>
-              <div className="text-sm font-medium">{new Date().toLocaleString()}</div>
+        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 rounded-xl shadow-lg p-8 text-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-yellow-400 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-900 font-bold text-xl">K</span>
+                  </div>
+                  <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
+                      PLM Dashboard
+                    </h1>
+                    <p className="text-blue-200 text-lg mt-1">Project Lifecycle Management System</p>
+                  </div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <p className="text-yellow-200 font-medium">Welcome back, {user.full_name}</p>
+                  <p className="text-blue-200 text-sm">
+                    {formatRole(user.role)} • {user.branch} • {user.country}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                  <div className="text-yellow-200 text-sm font-medium">Last Updated</div>
+                  <div className="text-white font-mono text-sm">{new Date().toLocaleString()}</div>
+                  <div className="mt-2 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span className="text-green-200 text-xs">System Online</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -369,6 +395,21 @@ export default function DashboardPage() {
           "amea_president",
           "ceo",
         ].includes(user.role) && <ApprovalDashboard userRole={user.role} userId={user.id} />}
+
+        {/* User Management - Only for BU Directors */}
+        {["branch_manager", "bu_director", "amea_president", "ceo"].includes(user.role) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+              <CardDescription>Create and manage user accounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => router.push("/dashboard/users/create")} className="bg-blue-900 hover:bg-blue-800">
+                Create New User
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

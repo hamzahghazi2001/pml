@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, User, AlertTriangle, MessageSquare, Calendar } from "lucide-react"
+import { CheckCircle, XCircle, Clock, User, AlertTriangle, MessageSquare, Calendar, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { notificationService } from "@/lib/notification-service"
 
@@ -195,6 +195,54 @@ export function ProjectApprovalStatus({
     } catch (error) {
       console.error("Error updating approval status:", error)
       alert("Error processing approval. Please try again.")
+    } finally {
+      setProcessingApproval(null)
+    }
+  }
+
+  const handleResubmission = async (approvalId: string) => {
+    setProcessingApproval(approvalId)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Not authenticated")
+
+      const { data: userData } = await supabase.from("users").select("full_name").eq("id", user.id).single()
+
+      // Reset the approval status to pending for resubmission
+      const { error } = await supabase
+        .from("project_approvals")
+        .update({
+          status: "pending",
+          approved_by: null,
+          approved_at: null,
+          comments: `Resubmitted by ${userData?.full_name || "Unknown User"} after addressing rejection issues. Previous rejection comments: ${comments[approvalId] || "No additional comments"}`,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", approvalId)
+
+      if (error) throw error
+
+      // Create notification for resubmission
+      if (projectData) {
+        await notificationService.createNotificationsForGateAction({
+          projectId: projectId,
+          projectName: projectData.name,
+          projectCategory: projectData.category,
+          currentGate: currentGate,
+          actionType: "approval_request",
+          triggeredBy: userData?.full_name || "Unknown User",
+        })
+      }
+
+      // Refresh approvals after successful resubmission
+      await fetchProjectApprovals()
+
+      alert(`Approval resubmitted successfully! Notifications have been sent to the original approver.`)
+    } catch (error) {
+      console.error("Error resubmitting approval:", error)
+      alert("Error resubmitting approval. Please try again.")
     } finally {
       setProcessingApproval(null)
     }
@@ -403,6 +451,291 @@ export function ProjectApprovalStatus({
                           <div>
                             <div className="font-medium text-blue-800 text-sm">Comments:</div>
                             <div className="text-gray-700">{approval.comments}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rejection Workflow - only show if approval is rejected */}
+                    {approval.status === "rejected" && (
+                      <div className="mb-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start gap-3 mb-3">
+                          <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-red-800 mb-2">Rejection Workflow</h4>
+                            <p className="text-sm text-red-700 mb-3">
+                              This approval was rejected and requires issue resolution before resubmission.
+                            </p>
+
+                            {/* Issue Resolution Assignment */}
+                            <div className="bg-white p-3 rounded border">
+                              <div className="text-sm">
+                                <span className="font-medium text-gray-700">Assigned to resolve issues:</span>
+                                <div className="mt-1">
+                                  {(() => {
+                                    // Determine who should handle rejection based on PLM document requirements
+                                    const getIssueHandler = (category: string, gate: number) => {
+                                      const cat = category.toLowerCase()
+
+                                      // Gate 1: Early bid decision
+                                      if (gate === 1) {
+                                        if (cat.includes("category_1")) {
+                                          return "Bid Manager"
+                                        } else if (cat === "category_2" || cat === "category_3") {
+                                          return "BU Director"
+                                        }
+                                      }
+
+                                      // Gate 2: Bid/No bid decision
+                                      if (gate === 2) {
+                                        if (cat === "category_1a") {
+                                          return "Bid Manager"
+                                        } else if (cat === "category_1b" || cat === "category_1c") {
+                                          return "Branch Manager"
+                                        } else if (cat === "category_2") {
+                                          return "BU Director"
+                                        } else if (cat === "category_3") {
+                                          return "AMEA President"
+                                        }
+                                      }
+
+                                      // Gate 3: Bid submission
+                                      if (gate === 3) {
+                                        if (cat === "category_1a") {
+                                          return "Bid Manager"
+                                        } else if (cat === "category_1b") {
+                                          return "Sales Director / Technical Director"
+                                        } else if (cat === "category_1c") {
+                                          return "BU Director / Finance Director"
+                                        } else if (cat === "category_2") {
+                                          return "AMEA President"
+                                        } else if (cat === "category_3") {
+                                          return "CEO"
+                                        }
+                                      }
+
+                                      // Gate 4: Contract approval (same as Gate 3)
+                                      if (gate === 4) {
+                                        if (cat === "category_1a") {
+                                          return "Bid Manager"
+                                        } else if (cat === "category_1b") {
+                                          return "Sales Director / Technical Director"
+                                        } else if (cat === "category_1c") {
+                                          return "BU Director / Finance Director"
+                                        } else if (cat === "category_2") {
+                                          return "AMEA President"
+                                        } else if (cat === "category_3") {
+                                          return "CEO"
+                                        }
+                                      }
+
+                                      // Gate 5: Launch review
+                                      if (gate === 5) {
+                                        if (cat === "category_1a") {
+                                          return "Project Manager"
+                                        } else if (cat === "category_1b") {
+                                          return "Branch Manager"
+                                        } else if (cat === "category_1c") {
+                                          return "Branch Manager / BU Director"
+                                        } else if (cat === "category_2" || cat === "category_3") {
+                                          return "BU Director"
+                                        }
+                                      }
+
+                                      // Gate 6-7: Contract works acceptance & close (same as Gate 5)
+                                      if (gate === 6 || gate === 7) {
+                                        if (cat === "category_1a") {
+                                          return "Project Manager"
+                                        } else if (cat === "category_1b") {
+                                          return "Branch Manager"
+                                        } else if (cat === "category_1c") {
+                                          return "Branch Manager / BU Director"
+                                        } else if (cat === "category_2" || cat === "category_3") {
+                                          return "BU Director"
+                                        }
+                                      }
+
+                                      return "Branch Manager"
+                                    }
+
+                                    return (
+                                      <Badge variant="outline" className="bg-orange-100 text-orange-800">
+                                        {getIssueHandler(projectCategory, currentGate)}
+                                      </Badge>
+                                    )
+                                  })()}
+                                </div>
+                              </div>
+
+                              {/* Required Actions */}
+                              <div className="mt-3 text-sm">
+                                <span className="font-medium text-gray-700">Required Actions:</span>
+                                <ul className="mt-1 list-disc list-inside text-gray-600 space-y-1">
+                                  <li>Review and address rejection comments</li>
+                                  <li>Update project documentation as needed</li>
+                                  <li>Implement corrective measures</li>
+                                  <li>Prepare resubmission with evidence of resolution</li>
+                                  {projectCategory === "category_2" || projectCategory === "category_3" ? (
+                                    <li>Conduct review meeting with Project Review Team</li>
+                                  ) : null}
+                                </ul>
+                              </div>
+
+                              {/* Escalation Path */}
+                              <div className="mt-3 text-sm">
+                                <span className="font-medium text-gray-700">Escalation Path:</span>
+                                <div className="mt-1 text-gray-600">
+                                  {(() => {
+                                    if (projectCategory === "category_3") {
+                                      return "Branch Manager → BU Director → AMEA President → CEO"
+                                    } else if (projectCategory === "category_2") {
+                                      return "Branch Manager → BU Director → AMEA President"
+                                    } else {
+                                      return "Bid Manager → Branch Manager → BU Director"
+                                    }
+                                  })()}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Timeline for Resolution */}
+                            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-yellow-600" />
+                                <span className="font-medium text-yellow-800">Resolution Timeline:</span>
+                              </div>
+                              <div className="mt-1 text-yellow-700">
+                                {(() => {
+                                  if (projectCategory === "category_3") {
+                                    return "14 days maximum for issue resolution and resubmission"
+                                  } else if (projectCategory === "category_2") {
+                                    return "7 days maximum for issue resolution and resubmission"
+                                  } else {
+                                    return "3-5 days maximum for issue resolution and resubmission"
+                                  }
+                                })()}
+                              </div>
+                            </div>
+
+                            {/* Resubmission Button - only for authorized users */}
+                            {(() => {
+                              const canResubmit = () => {
+                                // Based on PLM document - "Responsible person" for each gate/category can resubmit
+                                const category = projectCategory.toLowerCase()
+
+                                // Gate 1: Early bid decision
+                                if (currentGate === 1) {
+                                  if (category.includes("category_1")) {
+                                    return currentUserRole === "bid_manager"
+                                  } else if (category === "category_2" || category === "category_3") {
+                                    return currentUserRole === "bu_director"
+                                  }
+                                }
+
+                                // Gate 2: Bid/No bid decision
+                                if (currentGate === 2) {
+                                  if (category === "category_1a") {
+                                    return currentUserRole === "bid_manager"
+                                  } else if (category === "category_1b" || category === "category_1c") {
+                                    return currentUserRole === "branch_manager"
+                                  } else if (category === "category_2") {
+                                    return currentUserRole === "bu_director"
+                                  } else if (category === "category_3") {
+                                    return currentUserRole === "amea_president"
+                                  }
+                                }
+
+                                // Gate 3: Bid submission
+                                if (currentGate === 3) {
+                                  if (category === "category_1a") {
+                                    return currentUserRole === "bid_manager"
+                                  } else if (category === "category_1b") {
+                                    return (
+                                      currentUserRole === "sales_director" || currentUserRole === "technical_director"
+                                    )
+                                  } else if (category === "category_1c") {
+                                    return currentUserRole === "bu_director" || currentUserRole === "finance_director"
+                                  } else if (category === "category_2") {
+                                    return currentUserRole === "amea_president"
+                                  } else if (category === "category_3") {
+                                    return currentUserRole === "ceo"
+                                  }
+                                }
+
+                                // Gate 4: Contract approval
+                                if (currentGate === 4) {
+                                  if (category === "category_1a") {
+                                    return currentUserRole === "bid_manager"
+                                  } else if (category === "category_1b") {
+                                    return (
+                                      currentUserRole === "sales_director" || currentUserRole === "technical_director"
+                                    )
+                                  } else if (category === "category_1c") {
+                                    return currentUserRole === "bu_director" || currentUserRole === "finance_director"
+                                  } else if (category === "category_2") {
+                                    return currentUserRole === "amea_president"
+                                  } else if (category === "category_3") {
+                                    return currentUserRole === "ceo"
+                                  }
+                                }
+
+                                // Gate 5: Launch review
+                                if (currentGate === 5) {
+                                  if (category === "category_1a") {
+                                    return currentUserRole === "project_manager"
+                                  } else if (category === "category_1b") {
+                                    return currentUserRole === "branch_manager"
+                                  } else if (category === "category_1c") {
+                                    return currentUserRole === "branch_manager" || currentUserRole === "bu_director"
+                                  } else if (category === "category_2" || category === "category_3") {
+                                    return currentUserRole === "bu_director"
+                                  }
+                                }
+
+                                // Gate 6: Contract works acceptance
+                                if (currentGate === 6) {
+                                  if (category === "category_1a") {
+                                    return currentUserRole === "project_manager"
+                                  } else if (category === "category_1b") {
+                                    return currentUserRole === "branch_manager"
+                                  } else if (category === "category_1c") {
+                                    return currentUserRole === "branch_manager" || currentUserRole === "bu_director"
+                                  } else if (category === "category_2" || category === "category_3") {
+                                    return currentUserRole === "bu_director"
+                                  }
+                                }
+
+                                // Gate 7: Contract close
+                                if (currentGate === 7) {
+                                  if (category === "category_1a") {
+                                    return currentUserRole === "project_manager"
+                                  } else if (category === "category_1b") {
+                                    return currentUserRole === "branch_manager"
+                                  } else if (category === "category_1c") {
+                                    return currentUserRole === "branch_manager" || currentUserRole === "bu_director"
+                                  } else if (category === "category_2" || category === "category_3") {
+                                    return currentUserRole === "bu_director"
+                                  }
+                                }
+
+                                return false
+                              }
+
+                              return (
+                                canResubmit() && (
+                                  <div className="mt-3 pt-3 border-t">
+                                    <Button
+                                      onClick={() => handleResubmission(approval.id)}
+                                      disabled={processingApproval === approval.id}
+                                      className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      <ArrowRight className="h-4 w-4 mr-2" />
+                                      {processingApproval === approval.id ? "Processing..." : "Resubmit for Approval"}
+                                    </Button>
+                                  </div>
+                                )
+                              )
+                            })()}
                           </div>
                         </div>
                       </div>

@@ -68,6 +68,12 @@ export default function ProjectDetailsPage() {
 
   useEffect(() => {
     if (projectId) {
+      // Handle special routes
+      if (projectId === "completed") {
+        router.push("/dashboard/projects/completed")
+        return
+      }
+
       fetchProject()
       fetchCurrentUser()
     }
@@ -75,6 +81,14 @@ export default function ProjectDetailsPage() {
 
   const fetchProject = async () => {
     try {
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      if (!uuidRegex.test(projectId)) {
+        console.error("Invalid project ID format:", projectId)
+        router.push("/dashboard/projects")
+        return
+      }
+
       const { data, error } = await supabase
         .from("projects")
         .select(`
@@ -321,7 +335,7 @@ export default function ProjectDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
         <Navbar />
         <div className="container mx-auto p-6">
           <div className="flex items-center justify-center h-64">
@@ -334,7 +348,7 @@ export default function ProjectDetailsPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
         <Navbar />
         <div className="container mx-auto p-6">
           <div className="text-center">
@@ -350,7 +364,7 @@ export default function ProjectDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">

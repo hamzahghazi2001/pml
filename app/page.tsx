@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase"
 import {
   Shield,
@@ -23,7 +22,6 @@ import {
   Building2,
   Target,
   Zap,
-  TrendingUp,
   Award,
 } from "lucide-react"
 
@@ -84,7 +82,6 @@ export default function HomePage() {
                 className="h-10 w-auto"
               />
               <div>
-                <div className="text-2xl font-bold text-blue-900">KELLER</div>
                 <div className="text-xs text-gray-600">PLM Dashboard</div>
               </div>
             </div>
@@ -130,10 +127,6 @@ export default function HomePage() {
             <div className="flex items-center space-x-2 text-gray-600">
               <Target className="w-5 h-5 text-blue-900" />
               <span>7-Gate Process</span>
-            </div>
-            <div className="flex items-center space-x-2 text-gray-600">
-              <TrendingUp className="w-5 h-5 text-blue-900" />
-              <span>$50B+ Projects</span>
             </div>
           </div>
 
@@ -222,7 +215,7 @@ export default function HomePage() {
                 </div>
                 <CardTitle className="text-blue-900">Intelligent Automation</CardTitle>
                 <CardDescription>
-                  AI-powered workflow automation with smart routing and predictive analytics
+                  Intelligent workflow automation with smart routing and predictive analytics
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -297,7 +290,7 @@ export default function HomePage() {
                   <FileText className="w-6 h-6 text-red-600" />
                 </div>
                 <CardTitle className="text-blue-900">Smart Documentation</CardTitle>
-                <CardDescription>AI-assisted document generation with automated compliance checking</CardDescription>
+                <CardDescription>Intelligent document generation with automated compliance checking</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
@@ -315,7 +308,7 @@ export default function HomePage() {
                   <Award className="w-6 h-6 text-orange-600" />
                 </div>
                 <CardTitle className="text-blue-900">Continuous Learning</CardTitle>
-                <CardDescription>AI-powered insights from project outcomes for continuous improvement</CardDescription>
+                <CardDescription>Data-driven insights from project outcomes for continuous improvement</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
@@ -340,7 +333,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-8">
             {[
               { gate: 1, name: "Early Bid Decision", phase: "Opportunity", color: "from-green-400 to-green-500" },
               { gate: 2, name: "Bid/No Bid", phase: "Opportunity", color: "from-blue-400 to-blue-500" },
@@ -351,25 +344,15 @@ export default function HomePage() {
               { gate: 7, name: "Contract Close", phase: "Close-out", color: "from-orange-400 to-orange-500" },
             ].map((gate, index) => (
               <div key={gate.gate} className="text-center">
-                <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-200 hover:border-yellow-400 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 hover:bg-white transition-all duration-500 hover:shadow-2xl transform hover:-translate-y-2 hover:scale-105">
                   <div
-                    className={`w-16 h-16 bg-gradient-to-r ${gate.color} text-white rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl shadow-lg`}
+                    className={`w-20 h-20 bg-gradient-to-r ${gate.color} text-white rounded-2xl flex items-center justify-center mx-auto mb-6 font-bold text-2xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3`}
                   >
                     {gate.gate}
                   </div>
-                  <h3 className="font-bold text-blue-900 text-sm mb-2">{gate.name}</h3>
-                  <p className="text-xs text-gray-600 mb-3">{gate.phase}</p>
-                  <div className="flex justify-center">
-                    <Badge variant="outline" className="text-xs">
-                      Standard Process
-                    </Badge>
-                  </div>
+                  <h3 className="font-bold text-blue-900 text-base mb-3 leading-tight">{gate.name}</h3>
+                  <p className="text-sm text-gray-500 font-medium tracking-wide uppercase">{gate.phase}</p>
                 </div>
-                {index < 6 && (
-                  <div className="hidden md:flex items-center justify-center mt-4">
-                    <ArrowRight className="text-white/60 h-6 w-6" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -479,7 +462,7 @@ export default function HomePage() {
           <div className="border-t border-blue-800 mt-8 pt-8 text-center">
             <p className="text-blue-200 text-sm">
               © 2024 Keller Group plc. All rights reserved. | Standard: KG-OP-ST-00001-v1.0 |
-              <span className="ml-2">Powered by AI & Advanced Analytics</span>
+              <span className="ml-2">Powered by Advanced Analytics</span>
             </p>
           </div>
         </div>
