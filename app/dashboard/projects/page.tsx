@@ -526,7 +526,7 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
-      <div className="container mx-auto p-8 space-y-8">
+      <div className="max-w-7xl mx-auto p-8 space-y-8">
         <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 rounded-xl shadow-lg p-8 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
           <div className="relative z-10">
