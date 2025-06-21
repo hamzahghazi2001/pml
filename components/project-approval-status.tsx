@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, User, AlertTriangle, MessageSquare, Calendar } from "lucide-react"
 import { createClient } from "@/lib/supabase"
+import { notificationService } from "@/lib/notification-service"
 
 interface ProjectApproval {
   id: string
@@ -67,12 +68,25 @@ export function ProjectApprovalStatus({
     pending: 0,
     overdue: 0,
   })
+  const [projectData, setProjectData] = useState<any>(null)
 
   const supabase = createClient()
 
   useEffect(() => {
     fetchProjectApprovals()
+    fetchProjectData()
   }, [projectId, currentGate])
+
+  const fetchProjectData = async () => {
+    try {
+      const { data, error } = await supabase.from("projects").select("name, category").eq("id", projectId).single()
+
+      if (error) throw error
+      setProjectData(data)
+    } catch (error) {
+      console.error("Error fetching project data:", error)
+    }
+  }
 
   const fetchProjectApprovals = async () => {
     try {
@@ -109,94 +123,6 @@ export function ProjectApprovalStatus({
     }
   }
 
-  const ensureGateApprovals = async () => {
-    try {
-      // Check if approvals already exist for this project and gate
-      const { data: existingApprovals } = await supabase
-        .from("project_approvals")
-        .select("id")
-        .eq("project_id", projectId)
-        .eq("gate_number", currentGate)
-
-      if (existingApprovals && existingApprovals.length > 0) {
-        return // Approvals already exist
-      }
-
-      // Create new approval records based on gate and category
-      const requiredRoles = getRequiredRolesForGate(currentGate, projectCategory)
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 7) // 7 days from now
-
-      const approvalRecords = requiredRoles.map((role) => ({
-        project_id: projectId,
-        gate_number: currentGate,
-        required_role: role,
-        status: "pending",
-        due_date: dueDate.toISOString().split("T")[0], // Format as date
-        created_at: new Date().toISOString(),
-      }))
-
-      const { error } = await supabase.from("project_approvals").insert(approvalRecords)
-
-      if (error) throw error
-    } catch (error) {
-      console.error("Error ensuring gate approvals:", error)
-    }
-  }
-
-  const getRequiredRolesForGate = (gate: number, category: string) => {
-    // Define approval requirements based on gate and category
-    const approvalMatrix: Record<string, Record<number, string[]>> = {
-      category_1a: {
-        1: ["bid_manager", "branch_manager", "bu_director"],
-        2: ["bid_manager", "branch_manager", "sales_director", "bu_director", "amea_president"],
-        3: ["bid_manager", "branch_manager", "sales_director", "technical_director", "bu_director"],
-        4: ["branch_manager", "finance_manager", "bu_director", "amea_president", "ceo"],
-        5: ["project_manager", "branch_manager", "technical_director", "bu_director"],
-        6: ["project_manager", "branch_manager", "finance_manager", "bu_director"],
-        7: ["project_manager", "branch_manager", "bu_director"],
-      },
-      category_1b: {
-        1: ["bid_manager", "branch_manager"],
-        2: ["bid_manager", "branch_manager", "sales_director", "bu_director"],
-        3: ["bid_manager", "branch_manager", "sales_director", "bu_director"],
-        4: ["branch_manager", "finance_manager", "bu_director", "amea_president"],
-        5: ["project_manager", "branch_manager", "bu_director"],
-        6: ["project_manager", "branch_manager", "bu_director"],
-        7: ["project_manager", "branch_manager"],
-      },
-      category_1c: {
-        1: ["bid_manager", "branch_manager"],
-        2: ["bid_manager", "branch_manager", "bu_director"],
-        3: ["bid_manager", "branch_manager", "bu_director"],
-        4: ["branch_manager", "finance_manager", "bu_director"],
-        5: ["project_manager", "branch_manager"],
-        6: ["project_manager", "branch_manager"],
-        7: ["project_manager"],
-      },
-      category_2: {
-        1: ["bid_manager"],
-        2: ["bid_manager", "branch_manager"],
-        3: ["bid_manager", "branch_manager"],
-        4: ["branch_manager", "finance_manager"],
-        5: ["project_manager", "branch_manager"],
-        6: ["project_manager"],
-        7: ["project_manager"],
-      },
-      category_3: {
-        1: ["bid_manager"],
-        2: ["bid_manager"],
-        3: ["bid_manager"],
-        4: ["branch_manager"],
-        5: ["project_manager"],
-        6: ["project_manager"],
-        7: ["project_manager"],
-      },
-    }
-
-    return approvalMatrix[category]?.[gate] || []
-  }
-
   const canUserApprove = (approval: ProjectApproval) => {
     if (!currentUserId || !currentUserRole) return false
     return approval.required_role === currentUserRole
@@ -221,6 +147,14 @@ export function ProjectApprovalStatus({
   const handleApproval = async (approvalId: string, newStatus: string) => {
     setProcessingApproval(approvalId)
     try {
+      // Get current user info
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Not authenticated")
+
+      const { data: userData } = await supabase.from("users").select("full_name").eq("id", user.id).single()
+
       const { error } = await supabase
         .from("project_approvals")
         .update({
@@ -234,6 +168,19 @@ export function ProjectApprovalStatus({
 
       if (error) throw error
 
+      // Create notification for approval decision
+      if (projectData) {
+        await notificationService.createApprovalDecisionNotification(
+          projectId,
+          projectData.name,
+          projectData.category,
+          currentGate,
+          newStatus as "approved" | "rejected",
+          userData?.full_name || "Unknown User",
+          comments[approvalId],
+        )
+      }
+
       // Refresh approvals after successful update
       await fetchProjectApprovals()
 
@@ -243,8 +190,11 @@ export function ProjectApprovalStatus({
         delete newComments[approvalId]
         return newComments
       })
+
+      alert(`Approval ${newStatus} successfully! Notifications have been sent to relevant stakeholders.`)
     } catch (error) {
       console.error("Error updating approval status:", error)
+      alert("Error processing approval. Please try again.")
     } finally {
       setProcessingApproval(null)
     }

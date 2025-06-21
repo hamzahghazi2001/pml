@@ -88,23 +88,6 @@ export function Navbar() {
                 >
                   Projects
                 </Link>
-                {user &&
-                  [
-                    "branch_manager",
-                    "bu_director",
-                    "sales_director",
-                    "technical_director",
-                    "finance_manager",
-                    "amea_president",
-                    "ceo",
-                  ].includes(user.role) && (
-                    <Link
-                      href="/dashboard/approvals"
-                      className="text-gray-900 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                    >
-                      Approvals
-                    </Link>
-                  )}
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -130,9 +113,7 @@ export function Navbar() {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>Profile</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push("/dashboard/notifications")}>
-                      Notifications
-                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push("/dashboard/projects")}>Projects</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>Sign out</DropdownMenuItem>
                   </DropdownMenuContent>

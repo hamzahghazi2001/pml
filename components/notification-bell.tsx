@@ -25,10 +25,13 @@ export function NotificationBell() {
       markAsRead(notification.id)
     }
 
-    // Navigate based on notification type
-    if (notification.type === "approval_request") {
-      window.location.href = "/dashboard/approvals"
-    } else if (notification.type === "approval_decision") {
+    // Navigate to specific project if project_id is available
+    const projectId = notification.metadata?.project_id || notification.project_id
+
+    if (projectId && (notification.type === "approval_request" || notification.type === "approval_decision")) {
+      window.location.href = `/dashboard/projects/${projectId}`
+    } else {
+      // Fallback to general projects page if no project ID
       window.location.href = "/dashboard/projects"
     }
 

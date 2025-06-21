@@ -18,10 +18,23 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Calendar, DollarSign, AlertTriangle, MapPin, Wrench, User, Edit, Eye, ArrowRight } from "lucide-react"
+import {
+  Plus,
+  Calendar,
+  DollarSign,
+  AlertTriangle,
+  MapPin,
+  Wrench,
+  User,
+  Edit,
+  Eye,
+  Trash2,
+  Trophy,
+} from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
+import { notificationService } from "@/lib/notification-service"
 
 interface Project {
   id: string
@@ -99,6 +112,7 @@ export default function ProjectsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [advancingGate, setAdvancingGate] = useState<string | null>(null)
   const [projectApprovals, setProjectApprovals] = useState<Record<string, any[]>>({})
+  const [deletingProject, setDeletingProject] = useState<string | null>(null)
 
   const supabase = createClient()
   const router = useRouter()
@@ -247,6 +261,13 @@ export default function ProjectsPage() {
     return ["branch_manager", "bu_director", "amea_president", "ceo"].includes(currentUser.role)
   }
 
+  const canDeleteProject = (project: Project) => {
+    if (!currentUser) return false
+
+    // Only certain high-level roles can delete projects, or the project creator
+    return project.created_by === currentUser.id || ["bu_director", "amea_president", "ceo"].includes(currentUser.role)
+  }
+
   const handleEdit = (project: Project) => {
     setEditingProject(project.id)
     setEditForm({
@@ -323,6 +344,51 @@ export default function ProjectsPage() {
     }
   }
 
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete the project "${projectName}"? This action cannot be undone and will remove all associated data including gates, approvals, and documents.`,
+      )
+    ) {
+      return
+    }
+
+    setDeletingProject(projectId)
+    try {
+      console.log(`Starting deletion of project: ${projectId}`)
+
+      // Use the database function to delete the project
+      const { data, error } = await supabase.rpc("delete_project_cascade", {
+        project_id_param: projectId,
+      })
+
+      if (error) {
+        console.error("Database function error:", error)
+        throw error
+      }
+
+      console.log("Delete function result:", data)
+
+      if (!data.success) {
+        throw new Error(data.error || "Unknown error occurred during deletion")
+      }
+
+      // Log what was deleted
+      console.log("Successfully deleted:", data.deleted)
+
+      // Refresh the projects list
+      await fetchProjects()
+      alert(
+        `Project deleted successfully! Removed: ${data.deleted.projects} project(s), ${data.deleted.gates} gate(s), ${data.deleted.approvals} approval(s), ${data.deleted.documents} document(s)`,
+      )
+    } catch (error) {
+      console.error("Error deleting project:", error)
+      alert(`Error deleting project: ${error.message || "Please try again."}`)
+    } finally {
+      setDeletingProject(null)
+    }
+  }
+
   const createProjectApprovals = async (projectId: string, category: string) => {
     try {
       const { error } = await supabase.rpc("create_project_approvals", {
@@ -392,6 +458,14 @@ export default function ProjectsPage() {
 
       console.log("Project created successfully:", projectData)
 
+      // Create notifications for project creation
+      await notificationService.createProjectCreationNotification(
+        projectData.id,
+        projectData.name,
+        category,
+        currentUser?.full_name || "Unknown User",
+      )
+
       // Now create the approvals for Gate 1
       await createProjectApprovals(projectData.id, category)
 
@@ -459,188 +533,201 @@ export default function ProjectsPage() {
             <p className="text-gray-600 mt-2">Manage your project lifecycle and approvals</p>
           </div>
 
-          {/* New Project Button and Dialog */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleNewProjectClick} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="mr-2 h-4 w-4" />
-                New Project
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Project</DialogTitle>
-                <DialogDescription>
-                  Add a new project to the PLM system. The project category will be automatically calculated based on
-                  revenue and risk factor.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Project Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => handleInputChange("name", e.target.value)}
-                      required
-                      placeholder="Enter project name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="client_name">Client Name *</Label>
-                    <Input
-                      id="client_name"
-                      value={formData.client_name}
-                      onChange={(e) => handleInputChange("client_name", e.target.value)}
-                      required
-                      placeholder="Enter client name"
-                    />
-                  </div>
-                </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/dashboard/projects/completed")}
+              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+            >
+              <Trophy className="mr-2 h-4 w-4" />
+              View Completed
+            </Button>
 
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => handleInputChange("description", e.target.value)}
-                    rows={3}
-                    placeholder="Enter project description"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="revenue">Revenue (USD) *</Label>
-                    <Input
-                      id="revenue"
-                      type="number"
-                      step="0.01"
-                      value={formData.revenue}
-                      onChange={(e) => handleInputChange("revenue", e.target.value)}
-                      required
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="risk_factor">Risk Factor (1-10) *</Label>
-                    <Input
-                      id="risk_factor"
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={formData.risk_factor}
-                      onChange={(e) => handleInputChange("risk_factor", e.target.value)}
-                      required
-                      placeholder="1-10"
-                    />
-                  </div>
-                </div>
-
-                {calculatedCategory && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">Calculated Category:</span>
-                      <Badge className={categoryColors[calculatedCategory as keyof typeof categoryColors]}>
-                        {categoryLabels[calculatedCategory as keyof typeof categoryLabels]}
-                      </Badge>
+            {/* New Project Button and Dialog */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleNewProjectClick} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Project
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Project</DialogTitle>
+                  <DialogDescription>
+                    Add a new project to the PLM system. The project category will be automatically calculated based on
+                    revenue and risk factor.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="name">Project Name *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => handleInputChange("name", e.target.value)}
+                        required
+                        placeholder="Enter project name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="client_name">Client Name *</Label>
+                      <Input
+                        id="client_name"
+                        value={formData.client_name}
+                        onChange={(e) => handleInputChange("client_name", e.target.value)}
+                        required
+                        placeholder="Enter client name"
+                      />
                     </div>
                   </div>
-                )}
 
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="country">Country *</Label>
-                    <Input
-                      id="country"
-                      value={formData.country}
-                      onChange={(e) => handleInputChange("country", e.target.value)}
-                      required
-                      placeholder="Enter country"
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => handleInputChange("description", e.target.value)}
+                      rows={3}
+                      placeholder="Enter project description"
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="revenue">Revenue (USD) *</Label>
+                      <Input
+                        id="revenue"
+                        type="number"
+                        step="0.01"
+                        value={formData.revenue}
+                        onChange={(e) => handleInputChange("revenue", e.target.value)}
+                        required
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="risk_factor">Risk Factor (1-10) *</Label>
+                      <Input
+                        id="risk_factor"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={formData.risk_factor}
+                        onChange={(e) => handleInputChange("risk_factor", e.target.value)}
+                        required
+                        placeholder="1-10"
+                      />
+                    </div>
+                  </div>
+
+                  {calculatedCategory && (
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Calculated Category:</span>
+                        <Badge className={categoryColors[calculatedCategory as keyof typeof categoryColors]}>
+                          {categoryLabels[calculatedCategory as keyof typeof categoryLabels]}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="country">Country *</Label>
+                      <Input
+                        id="country"
+                        value={formData.country}
+                        onChange={(e) => handleInputChange("country", e.target.value)}
+                        required
+                        placeholder="Enter country"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="technique">Technique *</Label>
+                      <Input
+                        id="technique"
+                        value={formData.technique}
+                        onChange={(e) => handleInputChange("technique", e.target.value)}
+                        required
+                        placeholder="Enter technique"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <Label htmlFor="technique">Technique *</Label>
+                    <Label htmlFor="next_review_date">Next Review Date *</Label>
                     <Input
-                      id="technique"
-                      value={formData.technique}
-                      onChange={(e) => handleInputChange("technique", e.target.value)}
+                      id="next_review_date"
+                      type="date"
+                      value={formData.next_review_date}
+                      onChange={(e) => handleInputChange("next_review_date", e.target.value)}
                       required
-                      placeholder="Enter technique"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="next_review_date">Next Review Date *</Label>
-                  <Input
-                    id="next_review_date"
-                    type="date"
-                    value={formData.next_review_date}
-                    onChange={(e) => handleInputChange("next_review_date", e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="bid_manager_id">Bid Manager</Label>
-                    <Select
-                      value={formData.bid_manager_id}
-                      onValueChange={(value) => handleInputChange("bid_manager_id", value === "clear" ? "" : value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select bid manager (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="clear">Clear selection</SelectItem>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.full_name} ({user.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="bid_manager_id">Bid Manager</Label>
+                      <Select
+                        value={formData.bid_manager_id}
+                        onValueChange={(value) => handleInputChange("bid_manager_id", value === "clear" ? "" : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select bid manager (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clear">Clear selection</SelectItem>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.full_name} ({user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="project_manager_id">Project Manager</Label>
+                      <Select
+                        value={formData.project_manager_id}
+                        onValueChange={(value) =>
+                          handleInputChange("project_manager_id", value === "clear" ? "" : value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select project manager (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clear">Clear selection</SelectItem>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.full_name} ({user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="project_manager_id">Project Manager</Label>
-                    <Select
-                      value={formData.project_manager_id}
-                      onValueChange={(value) => handleInputChange("project_manager_id", value === "clear" ? "" : value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select project manager (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="clear">Clear selection</SelectItem>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.full_name} ({user.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating..." : "Create Project"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDialogOpen(false)}
+                      disabled={isSubmitting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "Creating..." : "Create Project"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="grid gap-6">
@@ -815,18 +902,16 @@ export default function ProjectsPage() {
                             Edit Project
                           </Button>
                         )}
-
-                        {canAdvanceGate(project) && project.current_gate < 7 && (
+                        {canDeleteProject(project) && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleAdvanceGate(project.id, project.current_gate)}
-                            disabled={advancingGate === project.id}
+                            onClick={() => handleDeleteProject(project.id, project.name)}
+                            disabled={deletingProject === project.id || editingProject !== null}
+                            className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                           >
-                            <ArrowRight className="h-4 w-4 mr-2" />
-                            {advancingGate === project.id
-                              ? "Advancing..."
-                              : `Advance to Gate ${project.current_gate + 1}`}
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {deletingProject === project.id ? "Deleting..." : "Delete"}
                           </Button>
                         )}
 

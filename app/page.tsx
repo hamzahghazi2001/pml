@@ -1,13 +1,80 @@
+"use client"
+
+import type React from "react"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, Shield, BarChart3, Users, FileText, Clock } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { createClient } from "@/lib/supabase"
+import {
+  Shield,
+  BarChart3,
+  Users,
+  FileText,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Building2,
+  Target,
+  Zap,
+  TrendingUp,
+  Award,
+} from "lucide-react"
+
+const roles = [
+  { value: "bid_manager", label: "Bid Manager" },
+  { value: "project_manager", label: "Project Manager" },
+  { value: "branch_manager", label: "Branch Manager" },
+  { value: "bu_director", label: "BU Director" },
+  { value: "finance_manager", label: "Finance Manager" },
+  { value: "technical_director", label: "Technical Director" },
+  { value: "sales_director", label: "Sales Director" },
+]
+
+const countries = ["UAE", "Saudi Arabia", "Egypt", "Kuwait", "Qatar", "Oman", "Bahrain"]
 
 export default function HomePage() {
+  const [showSignIn, setShowSignIn] = useState(false)
+  const [signInData, setSignInData] = useState({ email: "", password: "" })
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: signInData.email,
+        password: signInData.password,
+      })
+
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push("/dashboard")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-yellow-50">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -17,43 +84,123 @@ export default function HomePage() {
                 className="h-10 w-auto"
               />
               <div>
-                <div className="text-sm text-gray-600">PLM Dashboard</div>
+                <div className="text-2xl font-bold text-blue-900">KELLER</div>
+                <div className="text-xs text-gray-600">PLM Dashboard</div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Link href="/auth/signin">
-                <Button variant="outline" className="border-blue-900 text-blue-900 hover:bg-blue-50">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button className="bg-blue-900 hover:bg-blue-800 text-white">Sign Up</Button>
-              </Link>
+              <Button
+                variant="outline"
+                className="border-blue-900 text-blue-900 hover:bg-blue-50"
+                onClick={() => {
+                  setShowSignIn(!showSignIn)
+                }}
+              >
+                {showSignIn ? "Hide Sign In" : "Sign In"}
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h1 className="text-5xl font-bold text-blue-900 mb-6">Project Lifecycle Management</h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Streamline your project workflows with Keller's comprehensive PLM system. Manage the complete 7-gate
-            approval process from opportunity to contract closure.
+      <section className="py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-yellow-400/15 to-orange-500/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-tl from-red-600/5 via-transparent to-blue-800/8"></div>
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-yellow-300/20 via-transparent to-transparent"></div>
+        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-600/15 via-transparent to-transparent"></div>
+        <div className="max-w-7xl mx-auto px-6 text-center relative">
+          <h1 className="text-6xl font-bold text-blue-900 mb-6 leading-tight">
+            Next-Generation
+            <br />
+            <span className="bg-gradient-to-r from-blue-900 to-yellow-600 bg-clip-text text-transparent">
+              PLM Workflow
+            </span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+            Transform your project lifecycle management with Keller's intelligent 7-gate approval system. Streamline
+            workflows, ensure compliance, and accelerate project delivery across the Middle East & Africa.
           </p>
-          <div className="flex items-center justify-center space-x-4">
-            <Link href="/auth/signup">
-              <Button size="lg" className="bg-blue-900 hover:bg-blue-800 text-white px-8 py-3">
-                Get Started
-              </Button>
-            </Link>
-            <Link href="/about">
-              <Button size="lg" variant="outline" className="border-blue-900 text-blue-900 hover:bg-blue-50 px-8 py-3">
-                Learn More
-              </Button>
-            </Link>
+
+          <div className="flex items-center justify-center space-x-8 mb-12">
+            <div className="flex items-center space-x-2 text-gray-600">
+              <Building2 className="w-5 h-5 text-blue-900" />
+              <span>14+ Countries</span>
+            </div>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <Target className="w-5 h-5 text-blue-900" />
+              <span>7-Gate Process</span>
+            </div>
+            <div className="flex items-center space-x-2 text-gray-600">
+              <TrendingUp className="w-5 h-5 text-blue-900" />
+              <span>$50B+ Projects</span>
+            </div>
           </div>
+
+          {/* Sign In Form */}
+          {showSignIn && (
+            <Card className="max-w-md mx-auto mb-8 border-2 border-blue-200 shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-blue-900">Sign In to Dashboard</CardTitle>
+                <CardDescription>Access your PLM workspace</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email">Email</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      placeholder="your.email@keller.com"
+                      value={signInData.email}
+                      onChange={(e) => setSignInData((prev) => ({ ...prev, email: e.target.value }))}
+                      required
+                      className="border-gray-300 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="signin-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={signInData.password}
+                        onChange={(e) => setSignInData((prev) => ({ ...prev, password: e.target.value }))}
+                        required
+                        className="border-gray-300 focus:border-blue-500 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800 text-white" disabled={loading}>
+                    {loading ? "Signing In..." : "Access Dashboard"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </section>
 
@@ -61,118 +208,121 @@ export default function HomePage() {
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-blue-900 mb-4">Complete PLM Solution</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold text-blue-900 mb-4">Complete PLM Ecosystem</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
               Built specifically for Keller's Middle East Africa operations, following the official PLM standard
-              KG-OP-ST-00001-v1.0
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-2 hover:border-yellow-400 transition-colors">
+            <Card className="border-2 hover:border-blue-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <CheckCircle className="w-6 h-6 text-blue-900" />
+                  <Zap className="w-6 h-6 text-blue-900" />
                 </div>
-                <CardTitle className="text-blue-900">7-Gate Workflow</CardTitle>
-                <CardDescription>Complete gate management from early bid decision to contract closure</CardDescription>
+                <CardTitle className="text-blue-900">Intelligent Automation</CardTitle>
+                <CardDescription>
+                  AI-powered workflow automation with smart routing and predictive analytics
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• Automated approval routing</li>
-                  <li>• Role-based access control</li>
-                  <li>• Deadline tracking</li>
-                  <li>• Document management</li>
+                  <li>• Auto-categorization by risk & value</li>
+                  <li>• Smart approval routing</li>
+                  <li>• Predictive bottleneck detection</li>
+                  <li>• Automated compliance checks</li>
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-2 hover:border-yellow-400 transition-colors">
+            <Card className="border-2 hover:border-yellow-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4">
                   <Shield className="w-6 h-6 text-yellow-600" />
                 </div>
-                <CardTitle className="text-blue-900">Risk Management</CardTitle>
-                <CardDescription>Comprehensive risk assessment and categorization system</CardDescription>
+                <CardTitle className="text-blue-900">Enterprise Security</CardTitle>
+                <CardDescription>Bank-grade security with role-based access and audit trails</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• Automatic project categorization</li>
-                  <li>• Risk factor calculation</li>
-                  <li>• Approval matrix enforcement</li>
-                  <li>• Compliance monitoring</li>
+                  <li>• Multi-factor authentication</li>
+                  <li>• Granular permission control</li>
+                  <li>• Complete audit logging</li>
+                  <li>• Data encryption at rest</li>
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-2 hover:border-yellow-400 transition-colors">
+            <Card className="border-2 hover:border-green-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
                   <BarChart3 className="w-6 h-6 text-green-600" />
                 </div>
-                <CardTitle className="text-blue-900">Performance Analytics</CardTitle>
-                <CardDescription>Real-time insights into project performance and bottlenecks</CardDescription>
+                <CardTitle className="text-blue-900">Advanced Analytics</CardTitle>
+                <CardDescription>
+                  Real-time insights with predictive modeling and performance optimization
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• Gate performance metrics</li>
-                  <li>• Bottleneck identification</li>
-                  <li>• Portfolio overview</li>
-                  <li>• Compliance reporting</li>
+                  <li>• Real-time performance dashboards</li>
+                  <li>• Predictive risk modeling</li>
+                  <li>• Resource optimization</li>
+                  <li>• ROI impact analysis</li>
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-2 hover:border-yellow-400 transition-colors">
+            <Card className="border-2 hover:border-purple-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
                   <Users className="w-6 h-6 text-purple-600" />
                 </div>
-                <CardTitle className="text-blue-900">Team Collaboration</CardTitle>
-                <CardDescription>Seamless collaboration between sales, operations, and management</CardDescription>
+                <CardTitle className="text-blue-900">Global Collaboration</CardTitle>
+                <CardDescription>Seamless teamwork across 14+ countries with unified workflows</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• Role-based dashboards</li>
-                  <li>• Automated notifications</li>
-                  <li>• Project handover tools</li>
-                  <li>• Communication tracking</li>
+                  <li>• Multi-timezone coordination</li>
+                  <li>• Real-time collaboration tools</li>
+                  <li>• Unified communication hub</li>
+                  <li>• Cross-border project handoffs</li>
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-2 hover:border-yellow-400 transition-colors">
+            <Card className="border-2 hover:border-red-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mb-4">
                   <FileText className="w-6 h-6 text-red-600" />
                 </div>
-                <CardTitle className="text-blue-900">Document Control</CardTitle>
-                <CardDescription>Centralized document management with version control</CardDescription>
+                <CardTitle className="text-blue-900">Smart Documentation</CardTitle>
+                <CardDescription>AI-assisted document generation with automated compliance checking</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• BAR/CAR generation</li>
-                  <li>• Version tracking</li>
-                  <li>• Template library</li>
-                  <li>• Secure storage</li>
+                  <li>• Auto-generated BAR/CAR reports</li>
+                  <li>• Template intelligence</li>
+                  <li>• Version control & tracking</li>
+                  <li>• Compliance validation</li>
                 </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-2 hover:border-yellow-400 transition-colors">
+            <Card className="border-2 hover:border-orange-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
-                  <Clock className="w-6 h-6 text-orange-600" />
+                  <Award className="w-6 h-6 text-orange-600" />
                 </div>
-                <CardTitle className="text-blue-900">Lessons Learned</CardTitle>
-                <CardDescription>Capture and share knowledge for continuous improvement</CardDescription>
+                <CardTitle className="text-blue-900">Continuous Learning</CardTitle>
+                <CardDescription>AI-powered insights from project outcomes for continuous improvement</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
-                  <li>• Project feedback capture</li>
-                  <li>• Knowledge repository</li>
-                  <li>• Best practice sharing</li>
-                  <li>• Improvement tracking</li>
+                  <li>• Automated lessons capture</li>
+                  <li>• Pattern recognition</li>
+                  <li>• Best practice recommendations</li>
+                  <li>• Performance benchmarking</li>
                 </ul>
               </CardContent>
             </Card>
@@ -180,35 +330,46 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* PLM Process Overview */}
-      <section className="py-16 bg-blue-900">
+      {/* PLM Process Visualization */}
+      <section className="py-16 bg-gradient-to-r from-blue-900 to-blue-800">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-4">7-Gate PLM Process</h2>
-            <p className="text-blue-100">
+            <h2 className="text-4xl font-bold text-white mb-4">7-Gate PLM Process</h2>
+            <p className="text-blue-100 text-lg">
               Standardized workflow ensuring consistent project delivery across all categories
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             {[
-              { gate: 1, name: "Early Bid Decision", phase: "Opportunity" },
-              { gate: 2, name: "Bid/No Bid", phase: "Opportunity" },
-              { gate: 3, name: "Bid Submission", phase: "Bid" },
-              { gate: 4, name: "Contract Approval", phase: "Contract" },
-              { gate: 5, name: "Launch Review", phase: "Execution" },
-              { gate: 6, name: "Works Acceptance", phase: "Completion" },
-              { gate: 7, name: "Contract Close", phase: "Close-out" },
+              { gate: 1, name: "Early Bid Decision", phase: "Opportunity", color: "from-green-400 to-green-500" },
+              { gate: 2, name: "Bid/No Bid", phase: "Opportunity", color: "from-blue-400 to-blue-500" },
+              { gate: 3, name: "Bid Submission", phase: "Bid", color: "from-purple-400 to-purple-500" },
+              { gate: 4, name: "Contract Approval", phase: "Contract", color: "from-yellow-400 to-yellow-500" },
+              { gate: 5, name: "Launch Review", phase: "Execution", color: "from-red-400 to-red-500" },
+              { gate: 6, name: "Works Acceptance", phase: "Completion", color: "from-indigo-400 to-indigo-500" },
+              { gate: 7, name: "Contract Close", phase: "Close-out", color: "from-orange-400 to-orange-500" },
             ].map((gate, index) => (
               <div key={gate.gate} className="text-center">
-                <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-gray-200 hover:border-yellow-400 transition-colors">
-                  <div className="w-12 h-12 bg-blue-900 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold">
+                <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-200 hover:border-yellow-400 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+                  <div
+                    className={`w-16 h-16 bg-gradient-to-r ${gate.color} text-white rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-xl shadow-lg`}
+                  >
                     {gate.gate}
                   </div>
-                  <h3 className="font-semibold text-blue-900 text-sm mb-1">{gate.name}</h3>
-                  <p className="text-xs text-gray-600">{gate.phase}</p>
+                  <h3 className="font-bold text-blue-900 text-sm mb-2">{gate.name}</h3>
+                  <p className="text-xs text-gray-600 mb-3">{gate.phase}</p>
+                  <div className="flex justify-center">
+                    <Badge variant="outline" className="text-xs">
+                      Standard Process
+                    </Badge>
+                  </div>
                 </div>
-                {index < 6 && <div className="hidden md:block w-full h-0.5 bg-gray-300 mt-6"></div>}
+                {index < 6 && (
+                  <div className="hidden md:flex items-center justify-center mt-4">
+                    <ArrowRight className="text-white/60 h-6 w-6" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -216,36 +377,110 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-white border-t py-8">
+      <footer className="bg-blue-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-W64KmW11QXb7cBx0VGAaVRJNQCq3jG.png"
-                alt="Keller Logo"
-                className="h-8 w-auto"
-              />
-              <div>
-                <div className="text-xs text-gray-600">PLM Dashboard</div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-3 mb-4">
+                <img
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-W64KmW11QXb7cBx0VGAaVRJNQCq3jG.png"
+                  alt="Keller Logo"
+                  className="h-8 w-auto brightness-0 invert"
+                />
+                <div>
+                  <div className="text-xl font-bold">KELLER</div>
+                  <div className="text-xs text-blue-200">PLM Dashboard</div>
+                </div>
               </div>
+              <p className="text-blue-200 text-sm">
+                Transforming project delivery across the Middle East & Africa with intelligent workflow automation.
+              </p>
             </div>
-            <div className="flex items-center space-x-6 text-sm text-gray-600">
-              <Link href="/about" className="hover:text-blue-900">
-                About
-              </Link>
-              <Link href="/contact" className="hover:text-blue-900">
-                Contact
-              </Link>
-              <Link href="/privacy" className="hover:text-blue-900">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-blue-900">
-                Terms
-              </Link>
+
+            <div>
+              <h4 className="font-semibold mb-4">Platform</h4>
+              <ul className="space-y-2 text-sm text-blue-200">
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Analytics
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Reporting
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Integration
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-sm text-blue-200">
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Documentation
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Training
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-blue-200">
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    About Keller
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Careers
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="hover:text-white">
+                    Terms of Service
+                  </Link>
+                </li>
+              </ul>
             </div>
           </div>
-          <div className="mt-4 pt-4 border-t text-center text-xs text-gray-500">
-            © 2024 Keller Group. All rights reserved. | Standard: KG-OP-ST-00001-v1.0
+
+          <div className="border-t border-blue-800 mt-8 pt-8 text-center">
+            <p className="text-blue-200 text-sm">
+              © 2024 Keller Group plc. All rights reserved. | Standard: KG-OP-ST-00001-v1.0 |
+              <span className="ml-2">Powered by AI & Advanced Analytics</span>
+            </p>
           </div>
         </div>
       </footer>

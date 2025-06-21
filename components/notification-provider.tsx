@@ -170,11 +170,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       action: {
         label: "View",
         onClick: () => {
-          if (notification.type === "approval_request") {
-            window.location.href = "/dashboard/approvals"
-          } else {
-            window.location.href = "/dashboard/projects"
-          }
+          window.location.href = "/dashboard/projects"
         },
       },
       duration: 8000,

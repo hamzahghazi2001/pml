@@ -12,6 +12,7 @@ import { Navbar } from "@/components/navbar"
 import { DocumentUpload } from "@/components/document-upload"
 import { ApprovalDashboard } from "@/components/approval-dashboard"
 import { ProjectApprovalStatus } from "@/components/project-approval-status"
+import { notificationService } from "@/lib/services/notification-service"
 
 interface Project {
   id: string
@@ -192,6 +193,18 @@ export default function ProjectDetailsPage() {
 
       await fetchProject()
       alert(`Project advanced to Gate ${nextGate}! New approval workflow has been initiated.`)
+
+      // Create notifications for gate advancement
+      if (project) {
+        await notificationService.createNotificationsForGateAction({
+          projectId: projectId,
+          projectName: project.name,
+          projectCategory: project.category,
+          currentGate: nextGate,
+          actionType: "gate_advancement",
+          triggeredBy: currentUser?.full_name || "System",
+        })
+      }
     } catch (error) {
       console.error("Error advancing gate:", error)
       alert("Error advancing gate. Please try again.")
@@ -275,6 +288,16 @@ export default function ProjectDetailsPage() {
       if (error) throw error
 
       console.log(`Created ${approvalRecords.length} approval records for gate ${gateNumber}`)
+
+      // Create notifications for new approval requests
+      await notificationService.createNotificationsForGateAction({
+        projectId: projectId,
+        projectName: project.name,
+        projectCategory: project.category,
+        currentGate: gateNumber,
+        actionType: "approval_request",
+        triggeredBy: currentUser?.full_name || "System",
+      })
     } catch (error) {
       console.error("Error creating approvals for gate:", error)
     }
