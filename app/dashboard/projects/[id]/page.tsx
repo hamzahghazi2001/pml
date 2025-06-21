@@ -13,6 +13,7 @@ import { DocumentUpload } from "@/components/document-upload"
 import { ApprovalDashboard } from "@/components/approval-dashboard"
 import { ProjectApprovalStatus } from "@/components/project-approval-status"
 import { notificationService } from "@/lib/services/notification-service"
+import { useAlert } from "@/contexts/alert-context"
 
 interface Project {
   id: string
@@ -65,6 +66,7 @@ export default function ProjectDetailsPage() {
   const [advancingGate, setAdvancingGate] = useState(false)
 
   const supabase = createClient()
+  const { showAlert } = useAlert()
 
   useEffect(() => {
     if (projectId) {
@@ -187,7 +189,11 @@ export default function ProjectDetailsPage() {
     try {
       const nextGate = project.current_gate + 1
       if (nextGate > 7) {
-        alert("Project is already at the final gate.")
+        showAlert({
+          type: "warning",
+          title: "Final Gate Reached",
+          message: "Project is already at the final gate.",
+        })
         return
       }
 
@@ -206,7 +212,11 @@ export default function ProjectDetailsPage() {
       await createApprovalsForGate(projectId, nextGate, project.category)
 
       await fetchProject()
-      alert(`Project advanced to Gate ${nextGate}! New approval workflow has been initiated.`)
+      showAlert({
+        type: "success",
+        title: "Gate Advanced Successfully",
+        message: `Project advanced to Gate ${nextGate}! New approval workflow has been initiated.`,
+      })
 
       // Create notifications for gate advancement
       if (project) {
@@ -221,7 +231,11 @@ export default function ProjectDetailsPage() {
       }
     } catch (error) {
       console.error("Error advancing gate:", error)
-      alert("Error advancing gate. Please try again.")
+      showAlert({
+        type: "error",
+        title: "Gate Advancement Error",
+        message: "Error advancing gate. Please try again.",
+      })
     } finally {
       setAdvancingGate(false)
     }
@@ -366,23 +380,23 @@ export default function ProjectDetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => router.push("/dashboard/projects")}>
+      <div className="container mx-auto p-4 md:p-6">
+        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+            <Button variant="outline" onClick={() => router.push("/dashboard/projects")} className="w-fit">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Projects
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">{project.name}</h1>
-              <p className="text-gray-600">Client: {project.client_name}</p>
+              <h1 className="text-2xl font-bold md:text-3xl">{project.name}</h1>
+              <p className="text-gray-600 text-sm md:text-base">Client: {project.client_name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-blue-100 text-blue-800">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-blue-100 text-blue-800 text-xs md:text-sm">
               {categoryLabels[project.category as keyof typeof categoryLabels]}
             </Badge>
-            <Badge variant="outline">
+            <Badge variant="outline" className="text-xs md:text-sm">
               Gate {project.current_gate}: {gateLabels[project.current_gate as keyof typeof gateLabels]}
             </Badge>
           </div>
@@ -394,33 +408,37 @@ export default function ProjectDetailsPage() {
             <CardTitle>Project Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
+                <DollarSign className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Revenue</p>
-                  <p className="font-semibold">${project.revenue?.toLocaleString()}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Revenue</p>
+                  <p className="font-semibold text-sm md:text-base">${project.revenue?.toLocaleString()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Risk Factor</p>
-                  <p className="font-semibold">{project.risk_factor}/10</p>
+                  <p className="text-xs md:text-sm text-gray-600">Risk Factor</p>
+                  <p className="font-semibold text-sm md:text-base">{project.risk_factor}/10</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
+                <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Bid Manager</p>
-                  <p className="font-semibold">{project.bid_manager?.full_name || "Not assigned"}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Bid Manager</p>
+                  <p className="font-semibold text-sm md:text-base">
+                    {project.bid_manager?.full_name || "Not assigned"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
+                <Calendar className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
                 <div>
-                  <p className="text-sm text-gray-600">Next Review</p>
-                  <p className="font-semibold">{new Date(project.next_review_date).toLocaleDateString()}</p>
+                  <p className="text-xs md:text-sm text-gray-600">Next Review</p>
+                  <p className="font-semibold text-sm md:text-base">
+                    {new Date(project.next_review_date).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             </div>
@@ -436,22 +454,26 @@ export default function ProjectDetailsPage() {
         {/* Gate Advancement Status */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
                 {canAdvanceGate ? (
                   <>
-                    <CheckCircle className="h-6 w-6 text-green-600" />
+                    <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-green-600" />
                     <div>
-                      <p className="font-semibold text-green-800">Ready to Advance</p>
-                      <p className="text-sm text-green-600">All requirements met for Gate {project.current_gate}</p>
+                      <p className="font-semibold text-green-800 text-sm md:text-base">Ready to Advance</p>
+                      <p className="text-xs md:text-sm text-green-600">
+                        All requirements met for Gate {project.current_gate}
+                      </p>
                     </div>
                   </>
                 ) : (
                   <>
-                    <Clock className="h-6 w-6 text-orange-600" />
+                    <Clock className="h-5 w-5 md:h-6 md:w-6 text-orange-600" />
                     <div>
-                      <p className="font-semibold text-orange-800">Requirements Pending</p>
-                      <p className="text-sm text-orange-600">Complete all document requirements to advance</p>
+                      <p className="font-semibold text-orange-800 text-sm md:text-base">Requirements Pending</p>
+                      <p className="text-xs md:text-sm text-orange-600">
+                        Complete all document requirements to advance
+                      </p>
                     </div>
                   </>
                 )}
@@ -460,7 +482,7 @@ export default function ProjectDetailsPage() {
                 <Button
                   onClick={handleAdvanceGate}
                   disabled={advancingGate}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 w-full md:w-auto text-sm"
                 >
                   <ArrowRight className="mr-2 h-4 w-4" />
                   {advancingGate ? "Advancing..." : `Advance to Gate ${project.current_gate + 1}`}
@@ -471,11 +493,17 @@ export default function ProjectDetailsPage() {
         </Card>
 
         {/* Tabs for different sections */}
-        <Tabs defaultValue="documents" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="approvals">Approvals</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        <Tabs defaultValue="documents" className="space-y-4 md:space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="documents" className="text-xs md:text-sm">
+              Documents
+            </TabsTrigger>
+            <TabsTrigger value="approvals" className="text-xs md:text-sm">
+              Approvals
+            </TabsTrigger>
+            <TabsTrigger value="timeline" className="text-xs md:text-sm">
+              Timeline
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="documents">
@@ -513,7 +541,7 @@ export default function ProjectDetailsPage() {
                   {Array.from({ length: 7 }, (_, i) => i + 1).map((gateNumber) => (
                     <div
                       key={gateNumber}
-                      className={`flex items-center gap-4 p-4 rounded-lg border ${
+                      className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-lg border ${
                         gateNumber === project.current_gate
                           ? "border-blue-200 bg-blue-50"
                           : gateNumber < project.current_gate
@@ -522,7 +550,7 @@ export default function ProjectDetailsPage() {
                       }`}
                     >
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs md:text-sm ${
                           gateNumber < project.current_gate
                             ? "bg-green-600 text-white"
                             : gateNumber === project.current_gate
@@ -530,13 +558,17 @@ export default function ProjectDetailsPage() {
                               : "bg-gray-300 text-gray-600"
                         }`}
                       >
-                        {gateNumber < project.current_gate ? <CheckCircle className="h-4 w-4" /> : gateNumber}
+                        {gateNumber < project.current_gate ? (
+                          <CheckCircle className="h-3 w-3 md:h-4 md:w-4" />
+                        ) : (
+                          gateNumber
+                        )}
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium">
+                        <h4 className="font-medium text-sm md:text-base">
                           Gate {gateNumber}: {gateLabels[gateNumber as keyof typeof gateLabels]}
                         </h4>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs md:text-sm text-gray-600">
                           {gateNumber < project.current_gate
                             ? "Completed"
                             : gateNumber === project.current_gate

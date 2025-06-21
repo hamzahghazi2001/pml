@@ -73,15 +73,11 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-yellow-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-W64KmW11QXb7cBx0VGAaVRJNQCq3jG.png"
-                alt="Keller Logo"
-                className="h-10 w-auto"
-              />
-              <div>
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <img src="/keller-logo.png" alt="Keller Logo" className="h-8 sm:h-10 w-auto" />
+              <div className="hidden sm:block">
                 <div className="text-xs text-gray-600">PLM Dashboard</div>
               </div>
             </div>
@@ -101,25 +97,25 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 relative overflow-hidden">
+      <section className="py-12 sm:py-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-yellow-400/15 to-orange-500/10"></div>
         <div className="absolute inset-0 bg-gradient-to-tl from-red-600/5 via-transparent to-blue-800/8"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-yellow-300/20 via-transparent to-transparent"></div>
         <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-600/15 via-transparent to-transparent"></div>
-        <div className="max-w-7xl mx-auto px-6 text-center relative">
-          <h1 className="text-6xl font-bold text-blue-900 mb-6 leading-tight">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center relative">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-blue-900 mb-6 leading-tight">
             Next-Generation
             <br />
             <span className="bg-gradient-to-r from-blue-900 to-yellow-600 bg-clip-text text-transparent">
               PLM Workflow
             </span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
             Transform your project lifecycle management with Keller's intelligent 7-gate approval system. Streamline
             workflows, ensure compliance, and accelerate project delivery across the Middle East & Africa.
           </p>
 
-          <div className="flex items-center justify-center space-x-8 mb-12">
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 mb-8 sm:mb-12">
             <div className="flex items-center space-x-2 text-gray-600">
               <Building2 className="w-5 h-5 text-blue-900" />
               <span>14+ Countries</span>
@@ -132,7 +128,7 @@ export default function HomePage() {
 
           {/* Sign In Form */}
           {showSignIn && (
-            <Card className="max-w-md mx-auto mb-8 border-2 border-blue-200 shadow-xl">
+            <Card className="max-w-sm sm:max-w-md mx-auto mb-6 sm:mb-8 border-2 border-blue-200 shadow-xl">
               <CardHeader>
                 <CardTitle className="text-blue-900">Sign In to Dashboard</CardTitle>
                 <CardDescription>Access your PLM workspace</CardDescription>
@@ -187,7 +183,14 @@ export default function HomePage() {
                   </div>
 
                   <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800 text-white" disabled={loading}>
-                    {loading ? "Signing In..." : "Access Dashboard"}
+                    {loading ? (
+                      "Signing In..."
+                    ) : (
+                      <>
+                        <span className="sm:hidden">Access</span>
+                        <span className="hidden sm:inline">Access Dashboard</span>
+                      </>
+                    )}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </form>
@@ -198,16 +201,16 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 sm:py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-blue-900 mb-4">Complete PLM Ecosystem</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-blue-900 mb-4">Complete PLM Ecosystem</h2>
             <p className="text-gray-600 max-w-2xl mx-auto text-lg">
               Built specifically for Keller's Middle East Africa operations, following the official PLM standard
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <Card className="border-2 hover:border-blue-400 transition-all duration-300 hover:shadow-lg">
               <CardHeader>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
@@ -324,16 +327,16 @@ export default function HomePage() {
       </section>
 
       {/* PLM Process Visualization */}
-      <section className="py-16 bg-gradient-to-r from-blue-900 to-blue-800">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 sm:py-16 bg-gradient-to-r from-blue-900 to-blue-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-white mb-4">7-Gate PLM Process</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">7-Gate PLM Process</h2>
             <p className="text-blue-100 text-lg">
               Standardized workflow ensuring consistent project delivery across all categories
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 sm:gap-6 lg:gap-8">
             {[
               { gate: 1, name: "Early Bid Decision", phase: "Opportunity", color: "from-green-400 to-green-500" },
               { gate: 2, name: "Bid/No Bid", phase: "Opportunity", color: "from-blue-400 to-blue-500" },
@@ -344,13 +347,13 @@ export default function HomePage() {
               { gate: 7, name: "Contract Close", phase: "Close-out", color: "from-orange-400 to-orange-500" },
             ].map((gate, index) => (
               <div key={gate.gate} className="text-center">
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 hover:bg-white transition-all duration-500 hover:shadow-2xl transform hover:-translate-y-2 hover:scale-105">
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-xl border border-white/20 hover:bg-white transition-all duration-500 hover:shadow-2xl transform hover:-translate-y-2 hover:scale-105">
                   <div
-                    className={`w-20 h-20 bg-gradient-to-r ${gate.color} text-white rounded-2xl flex items-center justify-center mx-auto mb-6 font-bold text-2xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3`}
+                    className={`w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r ${gate.color} text-white rounded-2xl flex items-center justify-center mx-auto mb-6 font-bold text-xl sm:text-2xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:rotate-3`}
                   >
                     {gate.gate}
                   </div>
-                  <h3 className="font-bold text-blue-900 text-base mb-3 leading-tight">{gate.name}</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-blue-900 mb-3 leading-tight">{gate.name}</h3>
                   <p className="text-sm text-gray-500 font-medium tracking-wide uppercase">{gate.phase}</p>
                 </div>
               </div>
@@ -360,29 +363,21 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-blue-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <footer className="bg-blue-900 text-white py-8 sm:py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8">
             <div>
               <div className="flex items-center space-x-3 mb-4">
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-W64KmW11QXb7cBx0VGAaVRJNQCq3jG.png"
-                  alt="Keller Logo"
-                  className="h-8 w-auto brightness-0 invert"
-                />
+                <img src="/keller-logo.png" alt="Keller Logo" className="h-6 sm:h-8 w-auto brightness-0 invert" />
                 <div>
-                  <div className="text-xl font-bold">KELLER</div>
                   <div className="text-xs text-blue-200">PLM Dashboard</div>
                 </div>
               </div>
-              <p className="text-blue-200 text-sm">
-                Transforming project delivery across the Middle East & Africa with intelligent workflow automation.
-              </p>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">Platform</h4>
-              <ul className="space-y-2 text-sm text-blue-200">
+              <ul className="space-y-2 text-xs sm:text-sm text-blue-200">
                 <li>
                   <Link href="#" className="hover:text-white">
                     Dashboard
@@ -408,7 +403,7 @@ export default function HomePage() {
 
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm text-blue-200">
+              <ul className="space-y-2 text-xs sm:text-sm text-blue-200">
                 <li>
                   <Link href="#" className="hover:text-white">
                     Documentation
@@ -434,7 +429,7 @@ export default function HomePage() {
 
             <div>
               <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-blue-200">
+              <ul className="space-y-2 text-xs sm:text-sm text-blue-200">
                 <li>
                   <Link href="#" className="hover:text-white">
                     About Keller
@@ -459,12 +454,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="border-t border-blue-800 mt-8 pt-8 text-center">
-            <p className="text-blue-200 text-sm">
-              © 2024 Keller Group plc. All rights reserved. | Standard: KG-OP-ST-00001-v1.0 |
-              <span className="ml-2">Powered by Advanced Analytics</span>
-            </p>
-          </div>
+          <div className="border-t border-blue-800 mt-8 pt-8 text-center"></div>
         </div>
       </footer>
     </div>

@@ -76,8 +76,12 @@ export default function CompletedProjectsPage() {
 
   const fetchCompletedProjects = async () => {
     try {
+      console.log("Fetching completed projects...")
+
       // First, let's check if there are any projects at all and their gate status
-      const { data: allProjects, error: allError } = await supabase.from("projects").select("id, name, current_gate")
+      const { data: allProjects, error: allError } = await supabase
+        .from("projects")
+        .select("id, name, current_gate, status")
 
       if (allError) {
         console.error("Error fetching all projects:", allError)
@@ -93,8 +97,8 @@ export default function CompletedProjectsPage() {
         console.log("Gate distribution:", gateDistribution)
       }
 
-      // Now fetch completed projects (Gate 7)
-      const { data, error } = await supabase
+      // Try multiple approaches to find completed projects
+      const { data: gate7Projects, error: gate7Error } = await supabase
         .from("projects")
         .select(`
         *,
@@ -104,19 +108,40 @@ export default function CompletedProjectsPage() {
         .eq("current_gate", 7)
         .order("updated_at", { ascending: false })
 
-      if (error) {
-        console.error("Error fetching completed projects:", error)
-        throw error
+      const { data: completedStatusProjects, error: completedError } = await supabase
+        .from("projects")
+        .select(`
+        *,
+        bid_manager:users!projects_bid_manager_id_fkey(full_name),
+        project_manager:users!projects_project_manager_id_fkey(full_name)
+      `)
+        .eq("status", "completed")
+        .order("updated_at", { ascending: false })
+
+      if (gate7Error) {
+        console.error("Error fetching gate 7 projects:", gate7Error)
       }
 
-      console.log("Completed projects found:", data?.length || 0)
+      if (completedError) {
+        console.error("Error fetching completed status projects:", completedError)
+      }
 
-      const completedProjects = data || []
-      setProjects(completedProjects)
+      console.log("Gate 7 projects found:", gate7Projects?.length || 0)
+      console.log("Completed status projects found:", completedStatusProjects?.length || 0)
+
+      // Combine both approaches - projects at gate 7 OR with completed status
+      const allCompletedProjects = [
+        ...(gate7Projects || []),
+        ...(completedStatusProjects || []).filter((p) => !gate7Projects?.find((g) => g.id === p.id)),
+      ]
+
+      console.log("Total completed projects:", allCompletedProjects.length)
+
+      setProjects(allCompletedProjects)
 
       // Calculate stats
-      const totalRevenue = completedProjects.reduce((sum, project) => sum + (project.revenue || 0), 0)
-      const categoryBreakdown = completedProjects.reduce(
+      const totalRevenue = allCompletedProjects.reduce((sum, project) => sum + (project.revenue || 0), 0)
+      const categoryBreakdown = allCompletedProjects.reduce(
         (acc, project) => {
           acc[project.category] = (acc[project.category] || 0) + 1
           return acc
@@ -125,7 +150,7 @@ export default function CompletedProjectsPage() {
       )
 
       // Calculate average completion time (from creation to completion)
-      const completionTimes = completedProjects
+      const completionTimes = allCompletedProjects
         .filter((p) => p.created_at && p.updated_at)
         .map((p) => {
           const created = new Date(p.created_at)
@@ -139,7 +164,7 @@ export default function CompletedProjectsPage() {
           : 0
 
       setStats({
-        totalCompleted: completedProjects.length,
+        totalCompleted: allCompletedProjects.length,
         totalRevenue,
         averageCompletionTime,
         categoryBreakdown,
@@ -267,7 +292,9 @@ export default function CompletedProjectsPage() {
                 <Trophy className="h-12 w-12 text-gray-400 mb-4" />
                 <div className="text-gray-500 mb-4">No completed projects found</div>
                 <p className="text-sm text-gray-400 text-center">
-                  Projects will appear here once they complete all 7 PLM gates
+                  Projects will appear here once they reach Gate 7 or have "completed" status.
+                  <br />
+                  Check the browser console for debugging information.
                 </p>
               </CardContent>
             </Card>

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase"
+import { useAlert } from "@/contexts/alert-context"
 
 interface Approval {
   id: string
@@ -66,6 +67,7 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
   const [loading, setLoading] = useState(true)
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
   const [comments, setComments] = useState<Record<string, string>>({})
+  const { showAlert } = useAlert()
 
   const supabase = createClient()
 
@@ -127,11 +129,26 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
         return newComments
       })
 
-      // Show success message
-      alert(`Approval ${status} successfully!`)
+      // Replace this line:
+      // alert(`Approval ${status} successfully!`)
+
+      // With this:
+      showAlert({
+        type: status === "approved" ? "success" : "error",
+        title: status === "approved" ? "Approval Successful" : "Approval Rejected",
+        message: `The approval has been ${status} successfully! Notifications have been sent to relevant stakeholders.`,
+      })
     } catch (error) {
       console.error("Error processing approval:", error)
-      alert("Error processing approval. Please try again.")
+      // Replace this line:
+      // alert("Error processing approval. Please try again.")
+
+      // With this:
+      showAlert({
+        type: "error",
+        title: "Processing Error",
+        message: "There was an error processing the approval. Please try again.",
+      })
     } finally {
       setProcessingApproval(null)
     }

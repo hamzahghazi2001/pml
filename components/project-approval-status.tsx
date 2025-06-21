@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, User, AlertTriangle, MessageSquare, Calendar, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { notificationService } from "@/lib/notification-service"
+import { useAlert } from "@/contexts/alert-context"
 
 interface ProjectApproval {
   id: string
@@ -71,6 +72,7 @@ export function ProjectApprovalStatus({
   const [projectData, setProjectData] = useState<any>(null)
 
   const supabase = createClient()
+  const { showAlert } = useAlert()
 
   useEffect(() => {
     fetchProjectApprovals()
@@ -191,10 +193,18 @@ export function ProjectApprovalStatus({
         return newComments
       })
 
-      alert(`Approval ${newStatus} successfully! Notifications have been sent to relevant stakeholders.`)
+      showAlert({
+        type: newStatus === "approved" ? "success" : "error",
+        title: newStatus === "approved" ? "Approval Successful" : "Approval Rejected",
+        message: `Approval ${newStatus} successfully! Notifications have been sent to relevant stakeholders.`,
+      })
     } catch (error) {
       console.error("Error updating approval status:", error)
-      alert("Error processing approval. Please try again.")
+      showAlert({
+        type: "error",
+        title: "Processing Error",
+        message: "Error processing approval. Please try again.",
+      })
     } finally {
       setProcessingApproval(null)
     }
@@ -239,10 +249,18 @@ export function ProjectApprovalStatus({
       // Refresh approvals after successful resubmission
       await fetchProjectApprovals()
 
-      alert(`Approval resubmitted successfully! Notifications have been sent to the original approver.`)
+      showAlert({
+        type: "success",
+        title: "Resubmission Successful",
+        message: "Approval resubmitted successfully! Notifications have been sent to the original approver.",
+      })
     } catch (error) {
       console.error("Error resubmitting approval:", error)
-      alert("Error resubmitting approval. Please try again.")
+      showAlert({
+        type: "error",
+        title: "Resubmission Error",
+        message: "Error resubmitting approval. Please try again.",
+      })
     } finally {
       setProcessingApproval(null)
     }

@@ -347,35 +347,35 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-r from-[#f5faff] to-[#fffde9]">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto p-8 space-y-8">
+      <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-4 md:space-y-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 rounded-xl shadow-lg p-8 text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/10 to-transparent"></div>
           <div className="relative z-10">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               <div>
                 <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-yellow-400 rounded-lg flex items-center justify-center">
-                    <span className="text-slate-900 font-bold text-xl">K</span>
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-yellow-400 rounded-lg flex items-center justify-center">
+                    <span className="text-slate-900 font-bold text-lg md:text-xl">K</span>
                   </div>
                   <div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
+                    <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-white to-yellow-200 bg-clip-text text-transparent">
                       PLM Dashboard
                     </h1>
-                    <p className="text-blue-200 text-lg mt-1">Project Lifecycle Management System</p>
+                    <p className="text-blue-200 text-sm md:text-lg mt-1">Project Lifecycle Management System</p>
                   </div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                  <p className="text-yellow-200 font-medium">Welcome back, {user.full_name}</p>
-                  <p className="text-blue-200 text-sm">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4 border border-white/20">
+                  <p className="text-yellow-200 font-medium text-sm md:text-base">Welcome back, {user.full_name}</p>
+                  <p className="text-blue-200 text-xs md:text-sm">
                     {formatRole(user.role)} • {user.branch} • {user.country}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                  <div className="text-yellow-200 text-sm font-medium">Last Updated</div>
-                  <div className="text-white font-mono text-sm">{new Date().toLocaleString()}</div>
+              <div className="w-full lg:w-auto lg:text-right">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4 border border-white/20">
+                  <div className="text-yellow-200 text-xs md:text-sm font-medium">Last Updated</div>
+                  <div className="text-white font-mono text-xs md:text-sm">{new Date().toLocaleString()}</div>
                   <div className="mt-2 flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                     <span className="text-green-200 text-xs">System Online</span>
@@ -417,8 +417,8 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2 sm:col-span-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">Active Users</span>
                     <span className="text-lg font-bold text-slate-900">24</span>
@@ -428,7 +428,7 @@ export default function DashboardPage() {
                     <span className="text-lg font-bold text-amber-600">3</span>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:col-span-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-600">Roles Assigned</span>
                     <span className="text-lg font-bold text-slate-900">7</span>
@@ -438,10 +438,10 @@ export default function DashboardPage() {
                     <span className="text-sm text-green-600">2h ago</span>
                   </div>
                 </div>
-                <div className="flex flex-col space-y-2">
+                <div className="flex flex-col space-y-2 sm:col-span-2 lg:col-span-1">
                   <Button
                     onClick={() => router.push("/dashboard/users/create")}
-                    className="bg-blue-900 hover:bg-blue-800 text-white flex items-center space-x-2"
+                    className="bg-blue-900 hover:bg-blue-800 text-white flex items-center justify-center space-x-2"
                     size="sm"
                   >
                     <UserPlus className="h-4 w-4" />
@@ -450,7 +450,7 @@ export default function DashboardPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-slate-300 hover:bg-slate-50 flex items-center space-x-2"
+                    className="border-slate-300 hover:bg-slate-50 flex items-center justify-center space-x-2"
                   >
                     <Settings className="h-4 w-4" />
                     <span>Manage Roles</span>
@@ -517,7 +517,7 @@ export default function DashboardPage() {
               <CardDescription>Distribution by PLM category</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
                 <PieChart>
                   <Pie
                     data={metrics.categoryDistribution}
@@ -546,7 +546,7 @@ export default function DashboardPage() {
               <CardDescription>Average processing time by gate</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
                 <BarChart data={metrics.gatePerformance}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="gate" />
@@ -627,7 +627,7 @@ export default function DashboardPage() {
             <CardDescription>PLM compliance metrics across all projects</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Document Compliance</span>

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase"
 import { Eye, EyeOff } from "lucide-react"
+import { useAlert } from "@/contexts/alert-context"
 
 const roles = [
   { value: "bid_manager", label: "Bid Manager" },
@@ -43,6 +44,7 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState("")
   const router = useRouter()
   const supabase = createClient()
+  const { showAlert } = useAlert()
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -97,10 +99,14 @@ export default function SignUpPage() {
           return
         }
 
-        setSuccess("Account created successfully! Please check your email to verify your account.")
-        setTimeout(() => {
-          router.push("/auth/signin")
-        }, 3000)
+        showAlert({
+          type: "success",
+          title: "Account Created Successfully",
+          message: "Account created successfully! Please check your email to verify your account.",
+          onConfirm: () => {
+            router.push("/auth/signin")
+          },
+        })
       }
     } catch (err) {
       setError("An unexpected error occurred")
