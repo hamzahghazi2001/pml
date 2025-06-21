@@ -43,7 +43,17 @@ export function NotificationBell() {
       case "approval_request":
         return "🔔"
       case "approval_decision":
-        return metadata?.status === "approved" ? "✅" : "❌"
+        // Check multiple possible status fields and values
+        const status = metadata?.status || metadata?.decision || metadata?.approval_status
+        console.log("Notification metadata:", metadata, "Status:", status) // Debug log
+
+        if (status === "approved" || status === "approve" || status === "accepted") {
+          return "✅"
+        } else if (status === "rejected" || status === "reject" || status === "denied") {
+          return "❌"
+        } else {
+          return "⏳" // Pending or unknown status
+        }
       default:
         return "📢"
     }

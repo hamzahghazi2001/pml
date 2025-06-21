@@ -11,6 +11,7 @@ import { DollarSign, CheckCircle, Clock, FileText, AlertTriangle } from "lucide-
 import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { Users, UserPlus, Settings } from "lucide-react"
 
 interface DashboardMetrics {
   totalProjects: number
@@ -398,15 +399,64 @@ export default function DashboardPage() {
 
         {/* User Management - Only for BU Directors */}
         {["branch_manager", "bu_director", "amea_president", "ceo"].includes(user.role) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>Create and manage user accounts</CardDescription>
+          <Card className="bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-900 rounded-lg flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">User Management</CardTitle>
+                    <CardDescription className="text-sm">Manage team access & permissions</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                  {formatRole(user.role)}
+                </Badge>
+              </div>
             </CardHeader>
-            <CardContent>
-              <Button onClick={() => router.push("/dashboard/users/create")} className="bg-blue-900 hover:bg-blue-800">
-                Create New User
-              </Button>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Active Users</span>
+                    <span className="text-lg font-bold text-slate-900">24</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Pending Invites</span>
+                    <span className="text-lg font-bold text-amber-600">3</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Roles Assigned</span>
+                    <span className="text-lg font-bold text-slate-900">7</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-600">Last Activity</span>
+                    <span className="text-sm text-green-600">2h ago</span>
+                  </div>
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <Button
+                    onClick={() => router.push("/dashboard/users/create")}
+                    className="bg-blue-900 hover:bg-blue-800 text-white flex items-center space-x-2"
+                    size="sm"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>Create User</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-300 hover:bg-slate-50 flex items-center space-x-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Manage Roles</span>
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
