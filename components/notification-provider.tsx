@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase"
 import { toast } from "sonner"
@@ -15,6 +16,7 @@ interface Notification {
   read_at: string | null
   created_at: string
   metadata: any
+  project_id?: string
 }
 
 interface NotificationContextType {
@@ -39,26 +41,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [currentUser, setCurrentUser] = useState<any>(null)
   const supabase = createClient()
+  // keep a single channel instance
   const channelRef = useRef<RealtimeChannel | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
-    // Initialize audio with proper error handling
-    try {
-      audioRef.current = new Audio("/sounds/notification.wav")
-      audioRef.current.volume = 0.7
-      audioRef.current.preload = "auto"
-
-      // Test if audio can be loaded
+    console.log("NotificationProvider initializing")
+    // Initialize audio
+    if (typeof window !== "undefined") {
+      audioRef.current = new Audio("/notification-sound.wav")
+      audioRef.current.volume = 0.5 // Set volume to 50%
       audioRef.current.addEventListener("canplaythrough", () => {
         console.log("Notification sound loaded successfully")
       })
-
       audioRef.current.addEventListener("error", (e) => {
         console.error("Error loading notification sound:", e)
       })
-    } catch (error) {
-      console.error("Error initializing audio:", error)
     }
 
     fetchCurrentUser()
@@ -66,7 +64,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (currentUser) {
-      console.log("Setting up notifications for user:", currentUser)
       fetchNotifications()
       const cleanup = setupRealtimeSubscription()
       return cleanup
@@ -78,19 +75,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const {
         data: { user },
       } = await supabase.auth.getUser()
-
       if (user) {
-        console.log("Authenticated user found:", user.id)
-        const { data: userData, error } = await supabase.from("users").select("*").eq("id", user.id).single()
-
-        if (error) {
-          console.error("Error fetching user data:", error)
-        } else {
-          console.log("User data loaded:", userData)
-          setCurrentUser(userData)
-        }
-      } else {
-        console.log("No authenticated user found")
+        const { data: userData } = await supabase.from("users").select("*").eq("id", user.id).single()
+        setCurrentUser(userData)
       }
     } catch (error) {
       console.error("Error fetching user:", error)
@@ -101,7 +88,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (!currentUser) return
 
     try {
-      console.log("Fetching notifications for user:", currentUser.id)
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
@@ -109,67 +95,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         .order("created_at", { ascending: false })
         .limit(50)
 
-      if (error) {
-        console.error("Error fetching notifications:", error)
-        throw error
-      }
-
-      console.log("Fetched notifications:", data?.length || 0)
+      if (error) throw error
       setNotifications(data || [])
     } catch (error) {
       console.error("Error fetching notifications:", error)
     }
   }
 
-  const playNotificationSound = async () => {
-    try {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0
-        const playPromise = audioRef.current.play()
-
-        if (playPromise !== undefined) {
-          await playPromise
-          console.log("Notification sound played successfully")
-        }
-      }
-    } catch (error) {
-      console.log("Could not play notification sound:", error)
-      // Fallback: try to play a system beep
-      try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const oscillator = audioContext.createOscillator()
-        const gainNode = audioContext.createGain()
-
-        oscillator.connect(gainNode)
-        gainNode.connect(audioContext.destination)
-
-        oscillator.frequency.value = 800
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime)
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-
-        oscillator.start(audioContext.currentTime)
-        oscillator.stop(audioContext.currentTime + 0.5)
-      } catch (fallbackError) {
-        console.log("Could not play fallback sound:", fallbackError)
-      }
-    }
-  }
-
   const setupRealtimeSubscription = () => {
-    if (!currentUser) {
-      console.log("No current user, skipping realtime setup")
-      return
-    }
+    if (!currentUser) return
+    // already subscribed → no-op
+    if (channelRef.current) return
 
-    if (channelRef.current) {
-      console.log("Realtime channel already exists")
-      return
-    }
-
-    console.log("Setting up realtime subscription for user:", currentUser.id)
+    console.log("Setting up realtime subscription for user:", currentUser.id, "role:", currentUser.role)
 
     const channel = supabase
-      .channel(`notifications-${currentUser.id}`)
+      .channel("notifications")
       .on(
         "postgres_changes",
         {
@@ -179,18 +120,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           filter: `user_id=eq.${currentUser.id}`,
         },
         (payload) => {
-          console.log("New notification received:", payload)
+          console.log("New notification received:", payload.new)
           const newNotification = payload.new as Notification
+          setNotifications((prev) => [newNotification, ...prev])
 
-          setNotifications((prev) => {
-            console.log("Adding notification to list")
-            return [newNotification, ...prev]
-          })
-
-          // Play sound
+          // Play sound and show popup notification
           playNotificationSound()
-
-          // Show popup notification
           showPopupNotification(newNotification)
         },
       )
@@ -203,7 +138,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           filter: `user_id=eq.${currentUser.id}`,
         },
         (payload) => {
-          console.log("Notification updated:", payload)
+          console.log("Notification updated:", payload.new)
           const updatedNotification = payload.new as Notification
           setNotifications((prev) =>
             prev.map((notif) => (notif.id === updatedNotification.id ? updatedNotification : notif)),
@@ -213,16 +148,35 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       .subscribe((status) => {
         console.log("Realtime subscription status:", status)
       })
-
     channelRef.current = channel
 
-    // return cleanup function
+    // return cleanup FN
     return () => {
-      console.log("Cleaning up realtime subscription")
       if (channelRef.current) {
+        console.log("Cleaning up realtime subscription")
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
       }
+    }
+  }
+
+  const playNotificationSound = () => {
+    console.log("Attempting to play notification sound")
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0 // Reset to start
+      audioRef.current
+        .play()
+        .then(() => {
+          console.log("Notification sound played successfully")
+        })
+        .catch((error) => {
+          console.error("Could not play notification sound:", error)
+          // Try to reload the audio file
+          audioRef.current!.src = "/notification-sound.wav"
+          audioRef.current!.load()
+        })
+    } else {
+      console.error("Audio reference not available")
     }
   }
 
@@ -232,85 +186,83 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const getIcon = () => {
       switch (notification.type) {
         case "approval_request":
-          return <Clock className="h-5 w-5 text-blue-500" />
+          return <Clock className="h-4 w-4" />
         case "approval_decision":
           const status = notification.metadata?.status
-          return status === "approved" ? (
-            <CheckCircle className="h-5 w-5 text-green-500" />
-          ) : (
-            <XCircle className="h-5 w-5 text-red-500" />
-          )
+          if (status === "approved") {
+            return <CheckCircle className="h-4 w-4" />
+          } else if (status === "rejected") {
+            return <XCircle className="h-4 w-4" />
+          }
+          return <Clock className="h-4 w-4" />
+        case "gate_advancement":
+          return <CheckCircle className="h-4 w-4" />
         case "project_creation":
-          return <Info className="h-5 w-5 text-blue-500" />
+          return <Info className="h-4 w-4" />
         case "overdue_approval":
-          return <AlertTriangle className="h-5 w-5 text-orange-500" />
+          return <AlertTriangle className="h-4 w-4" />
         default:
-          return <Bell className="h-5 w-5 text-gray-500" />
+          return <Bell className="h-4 w-4" />
       }
     }
 
-    // Show enhanced toast notification with custom styling
+    const getActionUrl = () => {
+      if (notification.project_id) {
+        return `/dashboard/projects/${notification.project_id}`
+      }
+      return "/dashboard/projects"
+    }
+
+    // Show toast notification with enhanced styling
+    console.log("Creating toast notification")
     toast(notification.title, {
       description: notification.message,
       icon: getIcon(),
       action: {
-        label: "View Details",
+        label: "View Project",
         onClick: () => {
-          const projectId = notification.metadata?.project_id
-          if (projectId) {
-            window.location.href = `/dashboard/projects/${projectId}`
-          } else {
-            window.location.href = "/dashboard/projects"
-          }
+          console.log("Navigating to:", getActionUrl())
+          window.location.href = getActionUrl()
         },
       },
-      duration: 12000, // Show for 12 seconds
-      className: "border-l-4 border-l-blue-500 shadow-lg",
+      duration: 10000, // Show for 10 seconds
+      className: "notification-toast",
       style: {
-        background: "white",
+        background: "#ffffff",
         border: "1px solid #e5e7eb",
-        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-        borderRadius: "8px",
-        padding: "16px",
+        borderLeft: "4px solid #3b82f6",
+        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
       },
     })
 
-    // Request notification permission if not granted
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().then((permission) => {
-        console.log("Notification permission:", permission)
-      })
-    }
-
-    // Show browser notification if permission is granted
-    if ("Notification" in window && Notification.permission === "granted") {
-      try {
+    // Also show browser notification if permission is granted
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        console.log("Creating browser notification")
         const browserNotification = new Notification(notification.title, {
           body: notification.message,
           icon: "/keller-logo.png",
           tag: notification.id,
           badge: "/keller-logo.png",
           requireInteraction: true,
-          silent: false, // Allow sound
         })
 
         browserNotification.onclick = () => {
           window.focus()
-          const projectId = notification.metadata?.project_id
-          if (projectId) {
-            window.location.href = `/dashboard/projects/${projectId}`
-          } else {
-            window.location.href = "/dashboard/projects"
-          }
+          window.location.href = getActionUrl()
           browserNotification.close()
         }
 
-        // Auto close after 15 seconds
         setTimeout(() => {
           browserNotification.close()
         }, 15000)
-      } catch (error) {
-        console.error("Error showing browser notification:", error)
+      } else if (Notification.permission === "default") {
+        console.log("Requesting notification permission")
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            console.log("Notification permission granted")
+          }
+        })
       }
     }
   }
@@ -350,7 +302,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }
 
   const refreshNotifications = () => {
-    console.log("Refreshing notifications")
     fetchNotifications()
   }
 
