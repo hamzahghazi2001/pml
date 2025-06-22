@@ -1,92 +1,64 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bell, BellOff, Volume2 } from "lucide-react"
+import { Bell, X } from "lucide-react"
 
 export function NotificationPermission() {
+  const [showPrompt, setShowPrompt] = useState(false)
   const [permission, setPermission] = useState<NotificationPermission>("default")
-  const [audioSupported, setAudioSupported] = useState(false)
 
   useEffect(() => {
     if ("Notification" in window) {
       setPermission(Notification.permission)
+      if (Notification.permission === "default") {
+        setShowPrompt(true)
+      }
     }
-
-    // Test audio support
-    const audio = new Audio()
-    audio.addEventListener("canplaythrough", () => {
-      setAudioSupported(true)
-    })
-    audio.src = "/notification-sound.wav"
   }, [])
 
   const requestPermission = async () => {
     if ("Notification" in window) {
-      const result = await Notification.requestPermission()
-      setPermission(result)
+      const permission = await Notification.requestPermission()
+      setPermission(permission)
+      setShowPrompt(false)
     }
   }
 
-  const testNotification = () => {
-    if (permission === "granted") {
-      new Notification("Test Notification", {
-        body: "This is a test notification from Keller PLM Dashboard",
-        icon: "/keller-logo.png",
-      })
-    }
-
-    // Test sound
-    const audio = new Audio("/notification-sound.wav")
-    audio.volume = 0.5
-    audio.play().catch(console.error)
+  const dismissPrompt = () => {
+    setShowPrompt(false)
   }
 
-  if (!("Notification" in window)) {
+  if (!showPrompt || permission !== "default") {
     return null
   }
 
   return (
-    <Card className="mb-4">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" />
-          Notification Settings
-        </CardTitle>
+    <Card className="mb-4 border-blue-200 bg-blue-50">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-blue-600" />
+            <CardTitle className="text-lg">Enable Notifications</CardTitle>
+          </div>
+          <Button variant="ghost" size="sm" onClick={dismissPrompt}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
         <CardDescription>
-          Enable notifications to receive real-time updates about project approvals and gate changes.
+          Get instant notifications when you receive approval requests or project updates.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {permission === "granted" ? (
-              <Bell className="h-4 w-4 text-green-600" />
-            ) : (
-              <BellOff className="h-4 w-4 text-red-600" />
-            )}
-            <span className="text-sm">Browser Notifications: {permission === "granted" ? "Enabled" : "Disabled"}</span>
-          </div>
-          {permission !== "granted" && (
-            <Button onClick={requestPermission} size="sm">
-              Enable Notifications
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Volume2 className={`h-4 w-4 ${audioSupported ? "text-green-600" : "text-red-600"}`} />
-            <span className="text-sm">Sound Notifications: {audioSupported ? "Supported" : "Not Supported"}</span>
-          </div>
-        </div>
-
-        {permission === "granted" && (
-          <Button onClick={testNotification} variant="outline" size="sm">
-            Test Notification
+      <CardContent>
+        <div className="flex gap-2">
+          <Button onClick={requestPermission} size="sm">
+            Enable Notifications
           </Button>
-        )}
+          <Button variant="outline" onClick={dismissPrompt} size="sm">
+            Maybe Later
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

@@ -5,7 +5,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { createClient } from "@/lib/supabase"
 import { toast } from "sonner"
-import { Bell, CheckCircle, XCircle, Clock, AlertTriangle, Info } from "lucide-react"
+import { Bell, CheckCircle, XCircle, Clock } from "lucide-react"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 interface Notification {
@@ -16,7 +16,6 @@ interface Notification {
   read_at: string | null
   created_at: string
   metadata: any
-  project_id?: string
 }
 
 interface NotificationContextType {
@@ -43,22 +42,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const supabase = createClient()
   // keep a single channel instance
   const channelRef = useRef<RealtimeChannel | null>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
-    console.log("NotificationProvider initializing")
-    // Initialize audio
-    if (typeof window !== "undefined") {
-      audioRef.current = new Audio("/notification-sound.wav")
-      audioRef.current.volume = 0.5 // Set volume to 50%
-      audioRef.current.addEventListener("canplaythrough", () => {
-        console.log("Notification sound loaded successfully")
-      })
-      audioRef.current.addEventListener("error", (e) => {
-        console.error("Error loading notification sound:", e)
-      })
-    }
-
     fetchCurrentUser()
   }, [])
 
@@ -107,8 +92,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     // already subscribed → no-op
     if (channelRef.current) return
 
-    console.log("Setting up realtime subscription for user:", currentUser.id, "role:", currentUser.role)
-
     const channel = supabase
       .channel("notifications")
       .on(
@@ -120,12 +103,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           filter: `user_id=eq.${currentUser.id}`,
         },
         (payload) => {
-          console.log("New notification received:", payload.new)
           const newNotification = payload.new as Notification
           setNotifications((prev) => [newNotification, ...prev])
 
-          // Play sound and show popup notification
-          playNotificationSound()
+          // Show popup notification
           showPopupNotification(newNotification)
         },
       )
@@ -138,132 +119,70 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           filter: `user_id=eq.${currentUser.id}`,
         },
         (payload) => {
-          console.log("Notification updated:", payload.new)
           const updatedNotification = payload.new as Notification
           setNotifications((prev) =>
             prev.map((notif) => (notif.id === updatedNotification.id ? updatedNotification : notif)),
           )
         },
       )
-      .subscribe((status) => {
-        console.log("Realtime subscription status:", status)
-      })
+      .subscribe()
     channelRef.current = channel
 
     // return cleanup FN
     return () => {
       if (channelRef.current) {
-        console.log("Cleaning up realtime subscription")
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
       }
     }
   }
 
-  const playNotificationSound = () => {
-    console.log("Attempting to play notification sound")
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0 // Reset to start
-      audioRef.current
-        .play()
-        .then(() => {
-          console.log("Notification sound played successfully")
-        })
-        .catch((error) => {
-          console.error("Could not play notification sound:", error)
-          // Try to reload the audio file
-          audioRef.current!.src = "/notification-sound.wav"
-          audioRef.current!.load()
-        })
-    } else {
-      console.error("Audio reference not available")
-    }
-  }
-
   const showPopupNotification = (notification: Notification) => {
-    console.log("Showing popup notification:", notification)
-
     const getIcon = () => {
       switch (notification.type) {
         case "approval_request":
           return <Clock className="h-4 w-4" />
         case "approval_decision":
-          const status = notification.metadata?.status
-          if (status === "approved") {
-            return <CheckCircle className="h-4 w-4" />
-          } else if (status === "rejected") {
-            return <XCircle className="h-4 w-4" />
-          }
-          return <Clock className="h-4 w-4" />
-        case "gate_advancement":
-          return <CheckCircle className="h-4 w-4" />
-        case "project_creation":
-          return <Info className="h-4 w-4" />
-        case "overdue_approval":
-          return <AlertTriangle className="h-4 w-4" />
+          return notification.metadata?.status === "approved" ? (
+            <CheckCircle className="h-4 w-4" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )
         default:
           return <Bell className="h-4 w-4" />
       }
     }
 
-    const getActionUrl = () => {
-      if (notification.project_id) {
-        return `/dashboard/projects/${notification.project_id}`
+    const getToastType = () => {
+      switch (notification.type) {
+        case "approval_request":
+          return "info"
+        case "approval_decision":
+          return notification.metadata?.status === "approved" ? "success" : "error"
+        default:
+          return "info"
       }
-      return "/dashboard/projects"
     }
 
-    // Show toast notification with enhanced styling
-    console.log("Creating toast notification")
     toast(notification.title, {
       description: notification.message,
       icon: getIcon(),
       action: {
-        label: "View Project",
+        label: "View",
         onClick: () => {
-          console.log("Navigating to:", getActionUrl())
-          window.location.href = getActionUrl()
+          window.location.href = "/dashboard/projects"
         },
       },
-      duration: 10000, // Show for 10 seconds
-      className: "notification-toast",
-      style: {
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderLeft: "4px solid #3b82f6",
-        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-      },
+      duration: 8000,
     })
 
     // Also show browser notification if permission is granted
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") {
-        console.log("Creating browser notification")
-        const browserNotification = new Notification(notification.title, {
-          body: notification.message,
-          icon: "/keller-logo.png",
-          tag: notification.id,
-          badge: "/keller-logo.png",
-          requireInteraction: true,
-        })
-
-        browserNotification.onclick = () => {
-          window.focus()
-          window.location.href = getActionUrl()
-          browserNotification.close()
-        }
-
-        setTimeout(() => {
-          browserNotification.close()
-        }, 15000)
-      } else if (Notification.permission === "default") {
-        console.log("Requesting notification permission")
-        Notification.requestPermission().then((permission) => {
-          if (permission === "granted") {
-            console.log("Notification permission granted")
-          }
-        })
-      }
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(notification.title, {
+        body: notification.message,
+        icon: "/favicon.ico",
+        tag: notification.id,
+      })
     }
   }
 
