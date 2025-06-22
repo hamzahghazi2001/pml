@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import type React from "react"
+import { createContext, useContext, useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,148 +15,143 @@ import {
 import { CheckCircle, XCircle, AlertTriangle, Info } from "lucide-react"
 
 interface AlertOptions {
-  title?: string
+  type: "success" | "error" | "warning" | "info"
+  title: string
   message: string
-  type?: "success" | "error" | "warning" | "info"
+}
+
+interface ConfirmOptions extends AlertOptions {
   confirmText?: string
   cancelText?: string
   onConfirm?: () => void
   onCancel?: () => void
-  showCancel?: boolean
 }
 
 interface AlertContextType {
   showAlert: (options: AlertOptions) => void
-  showConfirm: (options: AlertOptions) => void
+  showConfirm: (options: ConfirmOptions) => void
 }
 
 const AlertContext = createContext<AlertContextType | undefined>(undefined)
 
-export function AlertProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [alertOptions, setAlertOptions] = useState<AlertOptions | null>(null)
-  const [isConfirm, setIsConfirm] = useState(false)
+export function useAlert() {
+  const context = useContext(AlertContext)
+  if (!context) {
+    throw new Error("useAlert must be used within an AlertProvider")
+  }
+  return context
+}
+
+export function AlertProvider({ children }: { children: React.ReactNode }) {
+  const [alertState, setAlertState] = useState<{
+    isOpen: boolean
+    type: "alert" | "confirm"
+    options: AlertOptions | ConfirmOptions
+  }>({
+    isOpen: false,
+    type: "alert",
+    options: { type: "info", title: "", message: "" },
+  })
 
   const showAlert = (options: AlertOptions) => {
-    setAlertOptions(options)
-    setIsConfirm(false)
-    setIsOpen(true)
+    setAlertState({
+      isOpen: true,
+      type: "alert",
+      options,
+    })
   }
 
-  const showConfirm = (options: AlertOptions) => {
-    setAlertOptions(options)
-    setIsConfirm(true)
-    setIsOpen(true)
+  const showConfirm = (options: ConfirmOptions) => {
+    setAlertState({
+      isOpen: true,
+      type: "confirm",
+      options,
+    })
+  }
+
+  const handleClose = () => {
+    setAlertState((prev) => ({ ...prev, isOpen: false }))
   }
 
   const handleConfirm = () => {
-    if (alertOptions?.onConfirm) {
-      alertOptions.onConfirm()
+    if (alertState.type === "confirm") {
+      const confirmOptions = alertState.options as ConfirmOptions
+      confirmOptions.onConfirm?.()
     }
-    setIsOpen(false)
-    setAlertOptions(null)
+    handleClose()
   }
 
   const handleCancel = () => {
-    if (alertOptions?.onCancel) {
-      alertOptions.onCancel()
+    if (alertState.type === "confirm") {
+      const confirmOptions = alertState.options as ConfirmOptions
+      confirmOptions.onCancel?.()
     }
-    setIsOpen(false)
-    setAlertOptions(null)
+    handleClose()
   }
 
   const getIcon = () => {
-    switch (alertOptions?.type) {
+    const t = alertState.options?.type ?? "info"
+    switch (t) {
       case "success":
-        return <CheckCircle className="h-6 w-6 text-green-600" />
+        return <CheckCircle className="h-6 w-6 text-green-500" />
       case "error":
-        return <XCircle className="h-6 w-6 text-red-600" />
+        return <XCircle className="h-6 w-6 text-red-500" />
       case "warning":
-        return <AlertTriangle className="h-6 w-6 text-yellow-600" />
+        return <AlertTriangle className="h-6 w-6 text-yellow-500" />
       case "info":
       default:
-        return <Info className="h-6 w-6 text-blue-600" />
+        return <Info className="h-6 w-6 text-blue-500" />
     }
   }
 
-  const getTitle = () => {
-    if (alertOptions?.title) return alertOptions.title
-
-    switch (alertOptions?.type) {
+  const getColorClasses = () => {
+    const t = alertState.options?.type ?? "info"
+    switch (t) {
       case "success":
-        return "Success"
+        return "border-l-4 border-l-green-500"
       case "error":
-        return "Error"
+        return "border-l-4 border-l-red-500"
       case "warning":
-        return "Warning"
+        return "border-l-4 border-l-yellow-500"
       case "info":
       default:
-        return "Information"
-    }
-  }
-
-  const getBorderColor = () => {
-    switch (alertOptions?.type) {
-      case "success":
-        return "border-green-200"
-      case "error":
-        return "border-red-200"
-      case "warning":
-        return "border-yellow-200"
-      case "info":
-      default:
-        return "border-blue-200"
-    }
-  }
-
-  const getButtonColor = () => {
-    switch (alertOptions?.type) {
-      case "success":
-        return "bg-green-600 hover:bg-green-700"
-      case "error":
-        return "bg-red-600 hover:bg-red-700"
-      case "warning":
-        return "bg-yellow-600 hover:bg-yellow-700"
-      case "info":
-      default:
-        return "bg-blue-600 hover:bg-blue-700"
+        return "border-l-4 border-l-blue-500"
     }
   }
 
   return (
     <AlertContext.Provider value={{ showAlert, showConfirm }}>
       {children}
-      <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-        <AlertDialogContent className={`max-w-md border-2 ${getBorderColor()}`}>
+      <AlertDialog
+        open={alertState.isOpen}
+        onOpenChange={(open) => setAlertState((prev) => ({ ...prev, isOpen: open }))}
+      >
+        <AlertDialogContent className={`max-w-md ${getColorClasses()}`}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-3 text-lg">
+            <AlertDialogTitle className="flex items-center gap-3">
               {getIcon()}
-              {getTitle()}
+              {alertState.options.title}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-700 text-base leading-relaxed">
-              {alertOptions?.message}
+            <AlertDialogDescription className="text-base leading-relaxed">
+              {alertState.options.message}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            {isConfirm && (
-              <AlertDialogCancel onClick={handleCancel} className="border-gray-300 hover:bg-gray-50">
-                {alertOptions?.cancelText || "Cancel"}
-              </AlertDialogCancel>
+          <AlertDialogFooter>
+            {alertState.type === "confirm" ? (
+              <>
+                <AlertDialogCancel onClick={handleCancel}>
+                  {(alertState.options as ConfirmOptions).cancelText || "Cancel"}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirm}>
+                  {(alertState.options as ConfirmOptions).confirmText || "Confirm"}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction onClick={handleClose}>OK</AlertDialogAction>
             )}
-            <AlertDialogAction onClick={handleConfirm} className={`text-white ${getButtonColor()}`}>
-              {alertOptions?.confirmText || "OK"}
-            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </AlertContext.Provider>
   )
-}
-
-export function useAlert() {
-  const context = useContext(AlertContext)
-  if (context === undefined) {
-    throw new Error("useAlert must be used within an AlertProvider")
-  }
-  return context
 }

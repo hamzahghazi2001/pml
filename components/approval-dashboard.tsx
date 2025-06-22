@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase"
 import { useAlert } from "@/contexts/alert-context"
+import { notificationService } from "@/lib/notification-service"
+import { createTestNotification } from "@/lib/test-notifications"
 
 interface Approval {
   id: string
@@ -67,15 +69,34 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
   const [loading, setLoading] = useState(true)
   const [processingApproval, setProcessingApproval] = useState<string | null>(null)
   const [comments, setComments] = useState<Record<string, string>>({})
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const { showAlert } = useAlert()
 
   const supabase = createClient()
 
   useEffect(() => {
-    if (userRole) {
+    fetchCurrentUser()
+  }, [])
+
+  useEffect(() => {
+    if (userRole && currentUser) {
       fetchApprovals()
     }
-  }, [userRole])
+  }, [userRole, currentUser])
+
+  const fetchCurrentUser = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        const { data: userData } = await supabase.from("users").select("*").eq("id", user.id).single()
+        setCurrentUser(userData)
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error)
+    }
+  }
 
   const fetchApprovals = async () => {
     try {
@@ -98,6 +119,26 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
     }
   }
 
+  const handleTestNotification = async () => {
+    if (!currentUser) return
+
+    try {
+      await createTestNotification(currentUser.id)
+      showAlert({
+        type: "success",
+        title: "Test Notification Sent",
+        message: "A test notification has been sent to verify the system is working.",
+      })
+    } catch (error) {
+      console.error("Error sending test notification:", error)
+      showAlert({
+        type: "error",
+        title: "Test Failed",
+        message: "Failed to send test notification. Please check the console for errors.",
+      })
+    }
+  }
+
   const handleApproval = async (approvalId: string, status: "approved" | "rejected") => {
     setProcessingApproval(approvalId)
     try {
@@ -105,6 +146,9 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Not authenticated")
+
+      const approval = approvals.find((a) => a.id === approvalId)
+      if (!approval) throw new Error("Approval not found")
 
       const { error } = await supabase
         .from("project_approvals")
@@ -119,6 +163,18 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
 
       if (error) throw error
 
+      // Create approval decision notification
+      console.log("Creating approval decision notification...")
+      await notificationService.createApprovalDecisionNotification(
+        approval.project_id,
+        approval.project.name,
+        approval.project.category,
+        approval.gate_number,
+        status,
+        currentUser?.full_name || "Unknown User",
+        comments[approvalId],
+      )
+
       // Refresh approvals
       await fetchApprovals()
 
@@ -129,10 +185,6 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
         return newComments
       })
 
-      // Replace this line:
-      // alert(`Approval ${status} successfully!`)
-
-      // With this:
       showAlert({
         type: status === "approved" ? "success" : "error",
         title: status === "approved" ? "Approval Successful" : "Approval Rejected",
@@ -140,10 +192,6 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
       })
     } catch (error) {
       console.error("Error processing approval:", error)
-      // Replace this line:
-      // alert("Error processing approval. Please try again.")
-
-      // With this:
       showAlert({
         type: "error",
         title: "Processing Error",
@@ -197,6 +245,12 @@ export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-4">
+          <Button onClick={handleTestNotification} variant="outline" size="sm">
+            Test Notification System
+          </Button>
+        </div>
+
         {approvals.length === 0 ? (
           <div className="text-center py-8">
             <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />

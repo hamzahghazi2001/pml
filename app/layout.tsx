@@ -1,36 +1,33 @@
 import type React from "react"
 import type { Metadata } from "next"
-import "./globals.css"
 import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
-import { AlertProvider } from "@/contexts/alert-context"
+import "./globals.css"
 import { NotificationProvider } from "@/components/notification-provider"
+import { AlertProvider } from "@/contexts/alert-context"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "Keller PLM System",
+  description: "Project Lifecycle Management System for Keller",
   generator: "v0.dev",
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <NotificationProvider>
-            <AlertProvider>
-              {children}
-              <Toaster />
-            </AlertProvider>
-          </NotificationProvider>
-        </ThemeProvider>
+        <NotificationProvider>
+          <AlertProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </AlertProvider>
+        </NotificationProvider>
       </body>
     </html>
   )
